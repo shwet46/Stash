@@ -1,132 +1,76 @@
 "use client";
-import type { Metadata } from "next";
 import FeaturesGrid from "@/components/marketing/FeaturesGrid";
 import CTASection from "@/components/marketing/CTASection";
 import { motion } from "framer-motion";
-
-const detailedFeatures = [
-  {
-    title: "Voice-First Operations",
-    description:
-      "The entire system runs over phone calls. Operators manage inventory, orders, and tasks using simple multilingual voice commands. No app installation, no internet on the operator's end, no literacy requirement.",
-    highlights: [
-      "Hindi, English, and Hinglish support",
-      "Feature phone compatible",
-      "30-second average interaction time",
-      "Natural language understanding via Gemini 3.0 Flash",
-    ],
-    color: "var(--color-brand-600)"
-  },
-  {
-    title: "Smart Inventory Management",
-    description:
-      "Real-time stock tracking with voice-based updates. When an operator says 'Chana Dal 500 kg aaya hai', the system automatically updates inventory, checks expiry dates, and flags any discrepancies.",
-    highlights: [
-      "Voice-based stock entry and correction",
-      "Automatic discrepancy detection",
-      "Expiry date tracking",
-      "Multi-warehouse consolidated view",
-    ],
-    color: "var(--color-brand-500)"
-  },
-  {
-    title: "AI Stock Intelligence",
-    description:
-      "Prophet models forecast demand 14 days ahead. XGBoost classifies disruption risk based on weather data, seasonal patterns, and historical trends. Auto-reorder when stock hits threshold.",
-    highlights: [
-      "14-day demand forecasting",
-      "Disruption risk classification",
-      "Weather-aware predictions",
-      "Automatic supplier outreach",
-    ],
-    color: "var(--color-brand-700)"
-  },
-  {
-    title: "Supplier Automation",
-    description:
-      "Automated voice calls to suppliers for price checks, availability, and order placement. Priority-based supplier chains ensure the best supplier is contacted first, with automatic fallback.",
-    highlights: [
-      "Priority-based supplier selection",
-      "Automated outbound calls via Twilio",
-      "Price negotiation strategy",
-      "Supplier performance tracking",
-    ],
-    color: "var(--color-brand-800)"
-  },
-];
+import { LuMic as Mic, LuZap as Zap, LuGlobe as Globe, LuShieldCheck as Shield } from 'react-icons/lu';
 
 export default function FeaturesPage() {
   return (
-    <>
-      <section className="section bg-gradient-mesh" style={{ paddingTop: '8rem' }}>
+    <main style={{ backgroundColor: '#ffffff' }}>
+      {/* Hero Header */}
+      <section style={{ paddingTop: '10rem', paddingBottom: '5rem', borderBottom: '1px solid var(--color-divider)' }}>
         <div className="container">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-            style={{ marginBottom: '5rem' }}
-          >
-            <span className="section-badge glass-dark">
-              Capabilities
-            </span>
-            <h1 className="hero-title text-gradient" style={{ marginTop: '1rem', maxWidth: '48rem', margin: '1rem auto' }}>
-              Powerful Features for Modern Godowns
-            </h1>
-            <p className="hero-desc" style={{ maxWidth: '32rem', margin: '0 auto' }}>
-              Every feature designed for voice-first interaction and zero learning curve.
-            </p>
-          </motion.div>
+          <div className="text-center" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <motion.span 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              style={{ color: 'var(--color-brand-600)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.875rem' }}
+            >
+              Enterprise Capabilities
+            </motion.span>
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--color-brand-800)', marginTop: '1rem', lineHeight: 1.1 }}
+            >
+              Everything you need to <span style={{ color: '#4285F4' }}>digitize your godown.</span>
+            </h1 >
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              style={{ fontSize: '1.25rem', color: 'var(--color-muted)', marginTop: '1.5rem', lineHeight: 1.6 }}
+            >
+              Stash combines Gemini AI with enterprise supply chain logic to create a platform that requires zero training.
+            </motion.p>
+          </div>
+        </div>
+      </section>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {detailedFeatures.map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                className="glass"
-                style={{
-                  padding: '3rem',
-                  borderRadius: '2rem',
-                  border: '1px solid white',
-                  borderLeft: `6px solid ${feature.color}`,
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
-                }}
-              >
-                <div className="grid-2" style={{ gap: '3rem', alignItems: 'start' }}>
-                  <div style={{ flex: 2 }}>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-brand-900)', marginBottom: '1.5rem' }}>
-                      {feature.title}
-                    </h2>
-                    <p style={{ fontSize: '1.125rem', color: 'var(--color-muted)', lineHeight: 1.7 }}>
-                      {feature.description}
-                    </p>
+      {/* High-Fidelity Feature Grid */}
+      <section style={{ padding: '8rem 0' }}>
+        <div className="container">
+          <div className="grid-3" style={{ gap: '2rem' }}>
+             {[
+               { icon: <Mic />, title: "Multilingual Voice", desc: "Speak in Hindi, English, or Hinglish. Our AI understands dialect and context natively." },
+               { icon: <Zap />, title: "Instant Manifests", desc: "Just say what arrived. Stash generates digital manifests and inventory logs instantly." },
+               { icon: <Globe />, title: "Cloud Scale", desc: "Manage 1 or 1,000 warehouses from a single dashboard with real-time sync." },
+               { icon: <Shield />, title: "Zero Literacy Barrier", desc: "Designed for operators who have never used a smartphone. If they can call, they can use Stash." },
+               { icon: <Mic />, title: "Automated Reorders", desc: "AI predicts stockouts and calls suppliers automatically to negotiate best prices." },
+               { icon: <Zap />, title: "Real-time Tracking", desc: "Every shipment is tracked via voice status updates from drivers on the road." }
+             ].map((f, i) => (
+               <motion.div 
+                 key={i}
+                 initial={{ opacity: 0, y: 20 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: i * 0.1 }}
+                 className="dashboard-card" 
+                 style={{ padding: '2.5rem', border: '1px solid var(--color-divider)', boxShadow: 'var(--shadow-premium)' }}
+               >
+                  <div style={{ width: '48px', height: '48px', backgroundColor: 'var(--color-brand-50)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-brand-600)', marginBottom: '1.5rem' }}>
+                    {f.icon}
                   </div>
-                  <div style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.4)', padding: '2rem', borderRadius: '1.5rem', border: '1px solid white' }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-brand-600)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.25rem' }}>
-                      Key Highlights
-                    </h4>
-                    <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {feature.highlights.map((h, j) => (
-                        <li
-                          key={j}
-                          style={{ display: 'flex', alignItems: 'start', gap: '0.75rem', fontSize: '0.9375rem', color: 'var(--color-brand-800)', fontWeight: 500 }}
-                        >
-                          <span style={{ width: '0.5rem', height: '0.5rem', backgroundColor: feature.color, borderRadius: '50%', marginTop: '0.375rem', flexShrink: 0 }} />
-                          {h}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-brand-800)', marginBottom: '1rem' }}>{f.title}</h3>
+                  <p style={{ color: 'var(--color-muted)', lineHeight: 1.6 }}>{f.desc}</p>
+               </motion.div>
+             ))}
           </div>
         </div>
       </section>
 
       <FeaturesGrid />
       <CTASection />
-    </>
+    </main>
   );
 }

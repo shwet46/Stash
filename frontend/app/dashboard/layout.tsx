@@ -12,10 +12,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-surface)' }}>
+    <div className="dashboard-shell">
       <Sidebar />
-      <main style={{ padding: '1.5rem', transition: 'all 0.3s', marginLeft: '15rem' }}>
-        <div className="container">{children}</div>
+      <main className="dashboard-main">
+        <div className="dashboard-content">{children}</div>
       </main>
     </div>
   );

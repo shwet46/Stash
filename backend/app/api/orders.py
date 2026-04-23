@@ -1,9 +1,11 @@
 """Orders API endpoints"""
 from fastapi import APIRouter, Depends, Query
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
 from app.models.orders import Order
+from app.services.firestore_service import firestore_service
 from typing import Optional
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
@@ -62,6 +64,22 @@ async def create_order(data: dict, db: AsyncSession = Depends(get_db)):
     )
     db.add(order)
     await db.commit()
+    await db.refresh(order)
+
+    # Sync to Firestore
+    try:
+        await firestore_service.upsert_document("orders", str(order.id), {
+            "id": str(order.id),
+            "order_ref": order.order_ref,
+            "buyer_id": str(order.buyer_id),
+            "product_id": str(order.product_id),
+            "quantity": order.quantity,
+            "status": order.status,
+            "total_amount": float(order.total_amount or 0),
+            "created_at": order.created_at.isoformat() if order.created_at else None
+        })
+    except Exception as e:
+        print(f"Firestore sync error: {e}")
 
     return {"status": "created", "order_ref": order.order_ref, "id": str(order.id)}
 
@@ -95,5 +113,14 @@ async def update_order_status(
 
     order.status = data.get("status", order.status)
     await db.commit()
+
+    # Sync to Firestore
+    try:
+        await firestore_service.upsert_document("orders", str(order.id), {
+            "status": order.status,
+            "updated_at": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        print(f"Firestore sync error: {e}")
 
     return {"status": "updated", "order_ref": order.order_ref}

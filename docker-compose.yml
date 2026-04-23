@@ -39,6 +39,7 @@ services:
     env_file: .env
     volumes:
       - ./backend:/app
+      - /app/.venv
 
   celery:
     build: ./backend

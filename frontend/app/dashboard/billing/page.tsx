@@ -4,6 +4,8 @@ import { LuSearch as Search, LuDownload as Download, LuFileText as FileText, LuI
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import SearchInput from "@/components/ui/SearchInput";
+
 
 const billsData = [
   { id: "INV-2401", orderRef: "STH-4830", buyer: "Patel Grocers", amount: 13500, gstRate: 5, gstAmount: 675, total: 14175, status: "paid", date: "2026-04-21" },
@@ -77,11 +79,10 @@ export default function BillingPage() {
       {/* Filters */}
       <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '240px', maxWidth: '24rem' }}>
-          <Input
+          <SearchInput
             placeholder="Search invoices..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            icon={<Search size={16} />}
           />
         </div>
         <div className="d-flex align-center gap-2">

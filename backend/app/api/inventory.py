@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.session import get_db
 from app.models.inventory import Inventory
+from app.services.firestore_service import firestore_service
 from typing import Optional
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
@@ -90,6 +91,20 @@ async def update_inventory(
             setattr(item, key, value)
 
     await db.commit()
+
+    # Sync to Firestore
+    try:
+        await firestore_service.upsert_document("inventory", str(item.id), {
+            "id": str(item.id),
+            "product_name": item.product_name,
+            "current_stock": item.current_stock,
+            "threshold": item.threshold,
+            "status": _get_stock_status(item),
+            "last_updated": item.last_updated.isoformat() if item.last_updated else None
+        })
+    except Exception as e:
+        print(f"Firestore sync error: {e}")
+
     return {"status": "updated", "id": str(item.id)}
 
 

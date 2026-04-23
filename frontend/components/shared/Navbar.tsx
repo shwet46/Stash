@@ -25,8 +25,8 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav 
-      className={`navbar ${scrolled ? "scrolled" : ""}`} 
+    <nav
+      className={`navbar ${scrolled ? "scrolled" : ""}`}
       id="main-navbar"
       style={{
         backgroundColor: scrolled ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
@@ -93,7 +93,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}

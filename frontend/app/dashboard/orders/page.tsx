@@ -1,42 +1,73 @@
 "use client";
-import { useState } from "react";
-import { LuSearch as Search, LuPlus as Plus, LuDownload as Download, LuEye as Eye } from 'react-icons/lu';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { LuSearch as Search, LuPlus as Plus, LuDownload as Download, LuEye as Eye, LuRefreshCw as RefreshCw } from 'react-icons/lu';
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import SearchInput from "@/components/ui/SearchInput";
 
-const ordersData = [
-  { id: "STH-4832", buyer: "Mehta & Sons", phone: "+91 98765 43210", product: "Basmati Rice", qty: "500 kg", amount: 62500, status: "pending", date: "2026-04-23", delivery: "2026-04-28" },
-  { id: "STH-4831", buyer: "Sharma Stores", phone: "+91 87654 32109", product: "Chana Dal", qty: "200 kg", amount: 24000, status: "dispatched", date: "2026-04-22", delivery: "2026-04-26" },
-  { id: "STH-4830", buyer: "Patel Grocers", phone: "+91 76543 21098", product: "Sugar", qty: "300 kg", amount: 13500, status: "delivered", date: "2026-04-21", delivery: "2026-04-24" },
-  { id: "STH-4829", buyer: "Kumar Trading", phone: "+91 65432 10987", product: "Wheat Flour", qty: "1000 kg", amount: 35000, status: "dispatched", date: "2026-04-21", delivery: "2026-04-25" },
-  { id: "STH-4828", buyer: "Singh & Co.", phone: "+91 54321 09876", product: "Toor Dal", qty: "150 kg", amount: 19500, status: "delivered", date: "2026-04-20", delivery: "2026-04-23" },
-  { id: "STH-4827", buyer: "Gupta Traders", phone: "+91 43210 98765", product: "Moong Dal", qty: "250 kg", amount: 27500, status: "delivered", date: "2026-04-20", delivery: "2026-04-23" },
-  { id: "STH-4826", buyer: "Reddy Retail", phone: "+91 32109 87654", product: "Groundnut Oil", qty: "200 L", amount: 30000, status: "pending", date: "2026-04-23", delivery: "2026-04-28" },
-  { id: "STH-4825", buyer: "Jain Supermart", phone: "+91 21098 76543", product: "Mustard Oil", qty: "150 L", amount: 21000, status: "delivered", date: "2026-04-19", delivery: "2026-04-22" },
-  { id: "STH-4824", buyer: "Yadav & Sons", phone: "+91 10987 65432", product: "Basmati Rice", qty: "800 kg", amount: 100000, status: "dispatched", date: "2026-04-22", delivery: "2026-04-27" },
-  { id: "STH-4823", buyer: "Chopra Stores", phone: "+91 98712 34567", product: "Tea", qty: "50 kg", amount: 17500, status: "delivered", date: "2026-04-18", delivery: "2026-04-21" },
-];
+import { fetchOrders, RecentOrder } from "@/lib/api";
 
-const statusConfig: Record<string, { variant: "warning" | "default" | "success"; label: string }> = {
+const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "info"; label: string }> = {
   pending: { variant: "warning", label: "Pending" },
-  dispatched: { variant: "default", label: "Dispatched" },
+  dispatched: { variant: "info", label: "Dispatched" },
   delivered: { variant: "success", label: "Delivered" },
+  in_transit: { variant: "info", label: "In Transit" },
 };
 
 export default function OrdersPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const role = ((session?.user as any)?.role || "worker").toLowerCase();
+  const isWorker = role === "worker";
+
+  useEffect(() => {
+    if (session && isWorker) {
+      router.push("/dashboard/inventory");
+    }
+  }, [session, isWorker, router]);
+
+  if (isWorker) {
+    return (
+      <div className="role-loading">
+        <div className="role-loading-spinner" />
+        <p className="role-loading-text">Redirecting to your workspace...</p>
+      </div>
+    );
+  }
+
+  const [orders, setOrders] = useState<RecentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filtered = ordersData.filter((order) => {
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchOrders();
+      setOrders(data);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const filtered = orders.filter((order) => {
     const matchSearch =
-      order.id.toLowerCase().includes(search.toLowerCase()) ||
-      order.buyer.toLowerCase().includes(search.toLowerCase());
+      order.order_ref.toLowerCase().includes(search.toLowerCase()) ||
+      (order as any).buyer_name?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || order.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
-  const totalAmount = filtered.reduce((sum, o) => sum + o.amount, 0);
+  const totalAmount = filtered.reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
   return (
     <div className="dashboard-wrapper">
@@ -44,26 +75,34 @@ export default function OrdersPage() {
         <div>
           <h1 className="dashboard-title">Orders</h1>
           <p className="dashboard-subtitle">
-            {ordersData.length} orders · Total: ₹{totalAmount.toLocaleString("en-IN")}
+            {orders.length} orders · Total: ₹{totalAmount.toLocaleString("en-IN")}
           </p>
         </div>
-        <div className="dashboard-header-right">
-          <Button variant="outline" size="sm" icon={<Download size={16} />}>
-            Export
-          </Button>
-          <Button size="sm" icon={<Plus size={16} />}>
-            New Order
-          </Button>
-        </div>
+        {!isWorker && (
+          <div className="dashboard-header-right">
+            <Button variant="outline" size="sm" icon={<Download size={16} />}>
+              Export
+            </Button>
+            <Button size="sm" icon={<Plus size={16} />}>
+              New Order
+            </Button>
+          </div>
+        )}
+        {isWorker && (
+           <div className="dashboard-header-right">
+              <Button variant="outline" size="sm" onClick={loadOrders} icon={<RefreshCw size={16} className={loading ? "spin" : ""} />}>
+                Refresh
+              </Button>
+           </div>
+        )}
       </div>
 
       <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '240px', maxWidth: '24rem' }}>
-          <Input
+          <SearchInput
             placeholder="Search by order ID or buyer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            icon={<Search size={16} />}
           />
         </div>
         <div className="d-flex align-center gap-2">
@@ -77,10 +116,11 @@ export default function OrdersPage() {
                 fontSize: '0.75rem',
                 fontWeight: 500,
                 cursor: 'pointer',
-                transition: 'colors 0.2s',
+                transition: 'all 0.2s',
                 border: statusFilter === s ? '1px solid var(--color-brand-600)' : '1px solid var(--color-divider)',
                 backgroundColor: statusFilter === s ? 'var(--color-brand-600)' : 'white',
-                color: statusFilter === s ? 'white' : 'var(--color-brand-700)'
+                color: statusFilter === s ? 'white' : 'var(--color-brand-700)',
+                whiteSpace: 'nowrap'
               }}
             >
               {s === "all" ? "All Orders" : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -96,7 +136,7 @@ export default function OrdersPage() {
               <tr>
                 <th>Order ID</th>
                 <th>Buyer</th>
-                <th>Product</th>
+                <th>Quantity</th>
                 <th>Amount</th>
                 <th>Order Date</th>
                 <th>Est. Delivery</th>
@@ -105,25 +145,35 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((order) => {
-                const statusCfg = statusConfig[order.status];
+              {loading ? (
+                <tr>
+                   <td colSpan={8} style={{ textAlign: 'center', padding: '3rem' }}>
+                      <RefreshCw size={24} className="spin" style={{ color: 'var(--color-brand-600)', margin: '0 auto' }} />
+                   </td>
+                </tr>
+              ) : filtered.map((order) => {
+                const statusCfg = statusConfig[order.status] || statusConfig.pending;
                 return (
                   <tr key={order.id}>
-                    <td style={{ fontWeight: 500, color: 'var(--color-brand-600)' }}>{order.id}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--color-brand-600)' }}>{order.order_ref}</td>
                     <td>
                       <div>
-                        <p style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{order.buyer}</p>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{order.phone}</p>
+                        <p style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{(order as any).buyer_name || "Guest Buyer"}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{(order as any).phone || "No contact"}</p>
                       </div>
                     </td>
                     <td style={{ color: 'var(--color-brand-700)' }}>
-                      {order.product} <span className="text-muted">({order.qty})</span>
+                      {order.quantity} units
                     </td>
-                    <td style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>
-                      ₹{order.amount.toLocaleString("en-IN")}
+                    <td style={{ fontWeight: 600, color: 'var(--color-brand-800)' }}>
+                      ₹{order.total_amount.toLocaleString("en-IN")}
                     </td>
-                    <td style={{ color: 'var(--color-muted)' }}>{order.date}</td>
-                    <td style={{ color: 'var(--color-muted)' }}>{order.delivery}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>
+                       {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>
+                       {order.estimated_delivery ? new Date(order.estimated_delivery).toLocaleDateString() : "TBD"}
+                    </td>
                     <td>
                       <Badge variant={statusCfg.variant} dot size="sm">
                         {statusCfg.label}
@@ -137,6 +187,13 @@ export default function OrdersPage() {
                   </tr>
                 );
               })}
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-muted)' }}>
+                    No orders found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

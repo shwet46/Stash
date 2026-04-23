@@ -1,100 +1,73 @@
 "use client";
-import type { Metadata } from "next";
 import TechStackSection from "@/components/marketing/TechStackSection";
 import CTASection from "@/components/marketing/CTASection";
 import { motion } from "framer-motion";
-
-const architecture = [
-  {
-    layer: "Presentation Layer",
-    description: "Next.js 14 with App Router, Custom CSS Design Tokens, Framer Motion, and Recharts.",
-    color: "var(--color-brand-600)",
-  },
-  {
-    layer: "API Layer",
-    description: "FastAPI with async endpoints, NextAuth.js for authentication, and JWT-based security.",
-    color: "var(--color-brand-500)",
-  },
-  {
-    layer: "AI / ML Layer",
-    description: "Gemini 3.0 Flash for NLP, Prophet for demand forecasting, and XGBoost for risk classification.",
-    color: "var(--color-brand-700)",
-  },
-  {
-    layer: "Communication Layer",
-    description: "Twilio Voice for telephony, Telegram Bot API for alerts, and Google Cloud TTS for responses.",
-    color: "var(--color-brand-800)",
-  },
-  {
-    layer: "Data Layer",
-    description: "PostgreSQL 16 with PostGIS, Redis for caching, and BigQuery for analytical processing.",
-    color: "var(--color-brand-600)",
-  },
-  {
-    layer: "Infrastructure Layer",
-    description: "Google Cloud Run, Firebase Hosting, Cloud Pub/Sub, and GitHub Actions CI/CD.",
-    color: "var(--color-brand-500)",
-  },
-];
+import { LuCloud as Cloud, LuCpu as Cpu, LuDatabase as Database, LuPhone as Phone } from 'react-icons/lu';
 
 export default function TechStackPage() {
   return (
-    <>
-      <section className="section bg-gradient-mesh" style={{ paddingTop: '8rem' }}>
+    <main style={{ backgroundColor: '#ffffff' }}>
+      <section style={{ paddingTop: '10rem', paddingBottom: '5rem', borderBottom: '1px solid var(--color-divider)' }}>
         <div className="container">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-            style={{ marginBottom: '5rem' }}
-          >
-            <span className="section-badge glass-dark">
-              Architecture
-            </span>
-            <h1 className="hero-title text-gradient" style={{ marginTop: '1rem', maxWidth: '48rem', margin: '1rem auto' }}>
-              Enterprise-Grade Tech Stack
-            </h1>
-            <p className="hero-desc" style={{ maxWidth: '32rem', margin: '0 auto' }}>
-              Built on Google Cloud with open-source foundations for maximum reliability.
-            </p>
-          </motion.div>
+          <div className="text-center" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <motion.span 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              style={{ color: 'var(--color-brand-600)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.875rem' }}
+            >
+              Enterprise Infrastructure
+            </motion.span>
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--color-brand-800)', marginTop: '1rem', lineHeight: 1.1 }}
+            >
+              Built on <span style={{ color: '#4285F4' }}>Google Cloud.</span>
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              style={{ fontSize: '1.25rem', color: 'var(--color-muted)', marginTop: '1.5rem', lineHeight: 1.6 }}
+            >
+              Stash leverages cutting-edge AI and telephony infrastructure to ensure 99.9% uptime and enterprise-grade security.
+            </motion.p>
+          </div>
+        </div>
+      </section>
 
-          {/* Architecture layers */}
-          <div style={{ maxWidth: '42rem', margin: '0 auto 6rem auto' }}>
-            <h2 className="section-title" style={{ fontSize: '1.75rem', marginBottom: '3rem' }}>
-              System Architecture
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {architecture.map((layer, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="glass"
-                  style={{ padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid white', display: 'flex', alignItems: 'center', gap: '1.5rem', borderLeft: `6px solid ${layer.color}` }}
-                >
-                  <div
-                    style={{ width: '3rem', height: '3rem', borderRadius: '0.75rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: layer.color, color: 'white', fontWeight: 800, fontSize: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  >
-                    {i + 1}
+      <section style={{ padding: '8rem 0' }}>
+        <div className="container">
+          <div className="grid-2" style={{ gap: '4rem' }}>
+             {[
+               { icon: <Cpu />, name: "Gemini 3.0 Flash", desc: "Our primary LLM for real-time multilingual audio transcription and intent extraction. Optimized for speed and accuracy in logistics context." },
+               { icon: <Cloud />, name: "Vertex AI", desc: "Infrastructure for deploying custom predictive models for stockout forecasting and disruption risk analysis." },
+               { icon: <Phone />, name: "Twilio Programmable Voice", desc: "Reliable telephony gateway handling inbound and outbound calls from even the most remote regions in India." },
+               { icon: <Database />, name: "PostgreSQL + Firestore", desc: "Hybrid database architecture for structured relational data and real-time operational state synchronization." }
+             ].map((tech, i) => (
+               <motion.div 
+                 key={i}
+                 initial={{ opacity: 0, y: 20 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ delay: i * 0.1 }}
+                 style={{ display: 'flex', gap: '1.5rem', padding: '2rem', borderRadius: '1.5rem', backgroundColor: '#F8F9FA', border: '1px solid #E8EAED' }}
+               >
+                  <div style={{ width: '56px', height: '56px', backgroundColor: 'white', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4285F4', flexShrink: 0, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                    {tech.icon}
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-brand-900)', marginBottom: '0.25rem' }}>
-                      {layer.layer}
-                    </h3>
-                    <p style={{ fontSize: '0.9375rem', color: 'var(--color-muted)', lineHeight: 1.5 }}>{layer.description}</p>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-brand-800)', marginBottom: '0.5rem' }}>{tech.name}</h3>
+                    <p style={{ color: 'var(--color-muted)', lineHeight: 1.6 }}>{tech.desc}</p>
                   </div>
-                </motion.div>
-              ))}
-            </div>
+               </motion.div>
+             ))}
           </div>
         </div>
       </section>
 
       <TechStackSection />
       <CTASection />
-    </>
+    </main>
   );
 }

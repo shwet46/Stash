@@ -1,45 +1,58 @@
 "use client";
-import { LuMapPin as MapPin, LuClock as Clock, LuPackage as Package, LuCheck as CheckCircle, LuTruck as TruckIcon } from 'react-icons/lu';
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { LuMapPin as MapPin, LuClock as Clock, LuPackage as Package, LuCheck as CheckCircle, LuTruck as TruckIcon, LuRefreshCw as RefreshCw, LuMaximize2 as Maximize, LuNavigation as Navigation } from 'react-icons/lu';
 import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import { fetchDeliveries } from "@/lib/api";
 
-const deliveries = [
-  { id: "STH-4832", buyer: "Mehta & Sons", product: "Basmati Rice", qty: "500 kg", status: "in_transit", eta: "Apr 28, 2026", driver: "Ramesh K.", updates: [
-    { status: "Order Confirmed", time: "Apr 23, 10:30 AM", location: "Mumbai Central Godown" },
-    { status: "Packed & Ready", time: "Apr 23, 2:00 PM", location: "Mumbai Central Godown" },
-    { status: "Dispatched", time: "Apr 24, 8:00 AM", location: "Mumbai Central Godown" },
-    { status: "In Transit", time: "Apr 24, 11:30 AM", location: "Thane Bypass" },
-  ]},
-  { id: "STH-4831", buyer: "Sharma Stores", product: "Chana Dal", qty: "200 kg", status: "in_transit", eta: "Apr 26, 2026", driver: "Suresh P.", updates: [
-    { status: "Order Confirmed", time: "Apr 22, 9:00 AM", location: "Pune Warehouse" },
-    { status: "Dispatched", time: "Apr 23, 7:30 AM", location: "Pune Warehouse" },
-    { status: "In Transit", time: "Apr 23, 1:00 PM", location: "Lonavala Highway" },
-  ]},
-  { id: "STH-4829", buyer: "Kumar Trading", product: "Wheat Flour", qty: "1000 kg", status: "dispatched", eta: "Apr 25, 2026", driver: "Anil M.", updates: [
-    { status: "Order Confirmed", time: "Apr 21, 11:00 AM", location: "Mumbai Central Godown" },
-    { status: "Dispatched", time: "Apr 22, 6:00 AM", location: "Mumbai Central Godown" },
-  ]},
-  { id: "STH-4830", buyer: "Patel Grocers", product: "Sugar", qty: "300 kg", status: "delivered", eta: "Apr 24, 2026", driver: "Vijay S.", updates: [
-    { status: "Order Confirmed", time: "Apr 21, 8:00 AM", location: "Pune Warehouse" },
-    { status: "Dispatched", time: "Apr 22, 7:00 AM", location: "Pune Warehouse" },
-    { status: "Delivered", time: "Apr 24, 10:30 AM", location: "Patel Grocers, Nashik" },
-  ]},
-];
-
-const statusConfig: Record<string, { variant: "warning" | "default" | "success"; label: string }> = {
+const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "info"; label: string }> = {
   dispatched: { variant: "warning", label: "Dispatched" },
-  in_transit: { variant: "default", label: "In Transit" },
+  in_transit: { variant: "info", label: "In Transit" },
   delivered: { variant: "success", label: "Delivered" },
+  pending: { variant: "default", label: "Pending" },
 };
 
 export default function DeliveriesPage() {
+  const { data: session } = useSession();
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
+
+  const loadDeliveries = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchDeliveries();
+      setDeliveries(data);
+      if (data.length > 0) setSelectedDelivery(data[0]);
+    } catch (error) {
+      console.error("Failed to fetch deliveries:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDeliveries();
+  }, []);
+
+  const activeCount = deliveries.filter(d => d.status !== 'delivered').length;
+  const transitCount = deliveries.filter(d => d.status === 'in_transit').length;
+  const deliveredCount = deliveries.filter(d => d.status === 'delivered').length;
+
   return (
     <div className="dashboard-wrapper">
       <div className="dashboard-header">
         <div>
           <h1 className="dashboard-title">Deliveries</h1>
           <p className="dashboard-subtitle">
-            Track active deliveries and shipment status
+            Real-time shipment tracking and route optimization
           </p>
+        </div>
+        <div className="dashboard-header-right">
+           <Button variant="outline" size="sm" onClick={loadDeliveries} icon={<RefreshCw size={16} className={loading ? "spin" : ""} />}>
+             Sync Data
+           </Button>
         </div>
       </div>
 
@@ -50,7 +63,7 @@ export default function DeliveriesPage() {
             <Package size={20} style={{ color: 'var(--color-warning)' }} />
           </div>
           <div>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>3</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>{activeCount}</p>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Active Shipments</p>
           </div>
         </div>
@@ -59,7 +72,7 @@ export default function DeliveriesPage() {
             <TruckIcon size={20} style={{ color: '#3B82F6' }} />
           </div>
           <div>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>2</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>{transitCount}</p>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>In Transit</p>
           </div>
         </div>
@@ -68,67 +81,95 @@ export default function DeliveriesPage() {
             <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
           </div>
           <div>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>1</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>{deliveredCount}</p>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Delivered Today</p>
           </div>
         </div>
       </div>
 
-      {/* Delivery cards with timeline */}
-      <div className="d-flex" style={{ flexDirection: 'column', gap: '1rem' }}>
-        {deliveries.map((del) => {
-          const statusCfg = statusConfig[del.status];
-          return (
-            <div key={del.id} className="dashboard-card">
-              <div className="d-flex align-center justify-between mb-4" style={{ alignItems: 'flex-start' }}>
-                <div>
-                  <div className="d-flex align-center gap-2">
-                    <h3 style={{ fontWeight: 600, color: 'var(--color-brand-600)' }}>{del.id}</h3>
-                    <Badge variant={statusCfg.variant} dot size="sm">{statusCfg.label}</Badge>
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-brand-800)', marginTop: '0.25rem' }}>
-                    {del.product} ({del.qty}) → {del.buyer}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>ETA</p>
-                  <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{del.eta}</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '0.25rem' }}>Driver: {del.driver}</p>
-                </div>
+      {/* Main Map View */}
+      <div className="grid-3" style={{ gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+        {/* Map Area */}
+        <div className="dashboard-card" style={{ padding: 0, position: 'relative', overflow: 'hidden', height: '500px' }}>
+           <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 5, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '0.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid var(--color-divider)' }}>
+                 <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-muted)', textTransform: 'uppercase' }}>Tracking</p>
+                 <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>{selectedDelivery?.order_id || "Select a shipment"}</p>
               </div>
+           </div>
+           
+           <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', zIndex: 5 }}>
+              <button style={{ backgroundColor: 'white', width: '2rem', height: '2rem', borderRadius: '0.5rem', border: '1px solid var(--color-divider)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                 <Maximize size={16} />
+              </button>
+           </div>
 
-              {/* Timeline */}
-              <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: '1rem' }}>
-                <div className="d-flex" style={{ alignItems: 'flex-start', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                  {del.updates.map((update, i) => (
-                    <div key={i} className="d-flex" style={{ alignItems: 'flex-start', gap: '0.5rem', minWidth: '180px' }}>
-                      <div className="d-flex" style={{ flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{
-                          width: '0.75rem', height: '0.75rem', borderRadius: '9999px', flexShrink: 0,
-                          backgroundColor: i === del.updates.length - 1 ? 'var(--color-brand-600)' : 'var(--color-brand-300)'
-                        }} />
-                        {i < del.updates.length - 1 && (
-                          <div style={{ width: '2px', height: '2rem', backgroundColor: 'var(--color-brand-200)' }} />
-                        )}
+           {/* Placeholder for real map */}
+           <div style={{ width: '100%', height: '100%', backgroundColor: '#f0f0f0', backgroundImage: 'url("/delivery_map_tracking_1776958713356.png")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+              {/* Overlay pulse for current location */}
+              {selectedDelivery && (
+                <div style={{ position: 'absolute', top: '40%', left: '30%', transform: 'translate(-50%, -50%)' }}>
+                   <div style={{ width: '1.5rem', height: '1.5rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 0 8px rgba(107,66,38,0.2)' }} className="pulse"></div>
+                   <div style={{ position: 'absolute', top: '2rem', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'var(--color-brand-800)', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.65rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                      Currently near Thane
+                   </div>
+                </div>
+              )}
+           </div>
+        </div>
+
+        {/* Sidebar List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+           <div className="dashboard-card" style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
+              <h3 className="dashboard-card-title mb-4">Shipments</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {deliveries.map((del) => {
+                  const isActive = selectedDelivery?.id === del.id;
+                  const cfg = statusConfig[del.status] || statusConfig.pending;
+                  return (
+                    <div 
+                      key={del.id} 
+                      onClick={() => setSelectedDelivery(del)}
+                      style={{ 
+                        padding: '0.75rem', 
+                        borderRadius: '0.5rem', 
+                        border: isActive ? '1px solid var(--color-brand-500)' : '1px solid var(--color-divider)',
+                        backgroundColor: isActive ? 'var(--color-brand-50)' : 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <div className="d-flex align-center justify-between mb-1">
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-brand-600)' }}>{del.id.slice(0, 8)}</span>
+                        <Badge variant={cfg.variant} dot size="xs">{cfg.label}</Badge>
                       </div>
-                      <div>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{update.status}</p>
-                        <p className="d-flex align-center gap-2" style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
-                          <Clock size={10} />
-                          {update.time}
-                        </p>
-                        <p className="d-flex align-center gap-2" style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
-                          <MapPin size={10} />
-                          {update.location}
-                        </p>
+                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>{del.note || "General Cargo"}</p>
+                      <div className="d-flex align-center gap-3 mt-2">
+                         <span className="d-flex align-center gap-1" style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>
+                            <Clock size={10} /> {new Date(del.updated_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                         </span>
+                         <span className="d-flex align-center gap-1" style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>
+                            <Navigation size={10} /> 12km
+                         </span>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            </div>
-          );
-        })}
+           </div>
+
+           {/* Selected Delivery Details */}
+           {selectedDelivery && (
+             <div className="dashboard-card" style={{ padding: '1rem', backgroundColor: 'var(--color-brand-800)', color: 'white' }}>
+                <p style={{ fontSize: '0.7rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase' }}>Current Milestone</p>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, marginTop: '0.25rem' }}>{selectedDelivery.status.replace('_', ' ')}</h4>
+                <p style={{ fontSize: '0.75rem', opacity: 0.9, marginTop: '0.5rem', lineHeight: 1.4 }}>{selectedDelivery.note || "Proceeding to destination via highway 4."}</p>
+                <Button size="sm" style={{ marginTop: '1rem', width: '100%', backgroundColor: 'white', color: 'var(--color-brand-800)', border: 'none' }}>
+                   View Full Timeline
+                </Button>
+             </div>
+           )}
+        </div>
       </div>
     </div>
   );

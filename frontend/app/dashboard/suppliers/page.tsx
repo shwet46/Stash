@@ -1,9 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { LuSearch as Search, LuPlus as Plus, LuPhone as Phone, LuStar as Star, LuEllipsis as MoreVertical } from 'react-icons/lu';
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import SearchInput from "@/components/ui/SearchInput";
+
 
 const suppliersData = [
   { id: 1, name: "Anand Trading Co.", phone: "+91 98765 43210", product: "Basmati Rice", priority: 1, status: "active", lastContacted: "2h ago", orders: 42, rating: 4.8 },
@@ -17,7 +21,27 @@ const suppliersData = [
 ];
 
 export default function SuppliersPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const role = ((session?.user as any)?.role || "worker").toLowerCase();
+  const isAuthorized = role === "owner" || role === "admin";
+
+  useEffect(() => {
+    if (status === "authenticated" && !isAuthorized) {
+      router.push("/dashboard/inventory");
+    }
+  }, [status, isAuthorized, router]);
+
   const [search, setSearch] = useState("");
+
+  if (status === "loading" || !isAuthorized) {
+    return (
+      <div className="role-loading">
+        <div className="role-loading-spinner" />
+        <p className="role-loading-text">{!isAuthorized && status === "authenticated" ? "Redirecting to your workspace..." : "Loading suppliers..."}</p>
+      </div>
+    );
+  }
 
   const filtered = suppliersData.filter((sup) =>
     sup.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -39,11 +63,10 @@ export default function SuppliersPage() {
       </div>
 
       <div style={{ maxWidth: '24rem' }}>
-        <Input
+        <SearchInput
           placeholder="Search suppliers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          icon={<Search size={16} />}
         />
       </div>
 

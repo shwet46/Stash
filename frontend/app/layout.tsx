@@ -47,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${notoSans.variable} ${plusJakartaSans.variable}`}>
+    <html lang="en" className={`${notoSans.variable} ${plusJakartaSans.variable}`} data-scroll-behavior="smooth">
       <head>
       </head>
       <body>
