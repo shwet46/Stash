@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     GOOGLE_AI_API_KEY: str = ""
     GOOGLE_CLOUD_PROJECT: str = ""
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
+    FIRESTORE_DATABASE: str = "stash"
     BIGQUERY_DATASET: str = "stash_analytics"
     FIREBASE_STORAGE_BUCKET: str = ""
     GOOGLE_MAPS_API_KEY: str = ""
@@ -39,7 +40,18 @@ class Settings(BaseSettings):
     # IMD Weather
     IMD_API_BASE_URL: str = "https://api.imd.gov.in"
 
-    model_config = {"env_file": ".env", "case_sensitive": True}
+    # Additional keys from shared .env
+    NEXTAUTH_SECRET: str = ""
+    NEXTAUTH_URL: str = ""
+    NEXT_PUBLIC_API_URL: str = ""
+    ELEVENLABS_API_KEY: str = ""
+    GCP_REGION: str = "us-central1"
+
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+        "extra": "ignore"
+    }
 
 
 @lru_cache()

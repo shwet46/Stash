@@ -1,7 +1,7 @@
 """Delivery models"""
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Integer, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geography
 from sqlalchemy.orm import relationship
@@ -47,7 +47,7 @@ class Godown(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    owner = relationship("User", back_populates="godowns")
+    owner = relationship("User", back_populates="godowns", foreign_keys=[owner_id])
     inventory_items = relationship("Inventory", back_populates="godown")
 
 
@@ -91,4 +91,3 @@ class TelegramMessage(Base):
     status = Column(String(20), default="sent")
 
 
-from sqlalchemy import Integer as SqlInteger, BigInteger

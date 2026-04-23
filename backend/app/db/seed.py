@@ -14,18 +14,21 @@ def generate_seed_data():
             "id": str(uuid.uuid4()),
             "name": "Shweta Behera",
             "email": "shweta@stash.ai",
+            "phone": "+919999999999",
             "role": "owner",
         },
         {
             "id": str(uuid.uuid4()),
             "name": "Ramesh Kumar",
             "email": "ramesh@stash.ai",
+            "phone": "+918888888888",
             "role": "worker",
         },
         {
             "id": str(uuid.uuid4()),
             "name": "Priya Sharma",
             "email": "priya@stash.ai",
+            "phone": "+917777777777",
             "role": "worker",
         },
     ]

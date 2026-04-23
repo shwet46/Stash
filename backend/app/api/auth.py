@@ -7,6 +7,7 @@ from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.core.security import get_password_hash, verify_password, create_access_token
 from datetime import timedelta
 from app.core.config import settings
+from app.services.firestore_service import firestore_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -32,6 +33,21 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+
+    # Store in Firestore as well
+    try:
+        await firestore_service.create_user({
+            "id": str(db_user.id),
+            "name": db_user.name,
+            "phone": db_user.phone,
+            "email": db_user.email,
+            "role": db_user.role,
+            "created_at": db_user.created_at.isoformat() if db_user.created_at else None
+        })
+    except Exception as e:
+        print(f"Error storing user in Firestore: {e}")
+        # We don't fail the whole request if Firestore fails, but we log it
+
     return db_user
 
 @router.post("/login", response_model=Token)

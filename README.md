@@ -64,7 +64,18 @@ docker-compose exec backend uv run python app/db/seed_run.py
 cd backend
 uv run python app/db/seed_run.py
 ```
-*(Note: I will create `app/db/seed_run.py` to facilitate this).*
+
+This seed script writes records to PostgreSQL and mirrors the same datasets to Firestore collections.
+
+For Firestore visibility, set these in `.env`:
+
+```bash
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+FIRESTORE_DATABASE=stash
+```
+
+If credentials are missing, seeding still succeeds for PostgreSQL and logs a Firestore skip warning.
 
 ---
 
