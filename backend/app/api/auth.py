@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
@@ -10,6 +12,24 @@ from app.core.config import settings
 from app.services.firestore_service import firestore_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
+def get_current_user_phone(token: str = Depends(oauth2_scheme)) -> str:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        phone = payload.get("sub")
+        if not phone:
+            raise credentials_exception
+        return str(phone)
+    except JWTError:
+        raise credentials_exception
 
 @router.post("/signup", response_model=UserResponse)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -68,7 +88,10 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(db: AsyncSession = Depends(get_db), current_user_phone: str = Depends(lambda: "admin")): # Mock for now
+async def get_me(
+    db: AsyncSession = Depends(get_db),
+    current_user_phone: str = Depends(get_current_user_phone),
+):
     result = await db.execute(select(User).where(User.phone == current_user_phone))
     user = result.scalars().first()
     if not user:

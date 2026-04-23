@@ -1,53 +1,77 @@
 "use client";
-import Link from "next/link";
 import Button from "../ui/Button";
 import { LuArrowRight as ArrowRight, LuPhone as Phone } from 'react-icons/lu';
+import { motion } from "framer-motion";
 
 export default function CTASection() {
   return (
     <section className="section" id="cta-section">
       <div className="container">
-        <div style={{ backgroundColor: 'var(--color-brand-600)', borderRadius: '1rem', padding: '2.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          style={{ 
+            background: 'linear-gradient(135deg, var(--color-brand-800) 0%, var(--color-brand-600) 100%)', 
+            borderRadius: '2rem', 
+            padding: '4rem 2rem', 
+            textAlign: 'center', 
+            position: 'relative', 
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(124, 69, 48, 0.3)'
+          }}
+        >
           {/* Background decorations */}
-          <div style={{ position: 'absolute', top: 0, right: 0, width: '16rem', height: '16rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%', transform: 'translate(50%, -50%)' }} />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, width: '12rem', height: '12rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%', transform: 'translate(-50%, 50%)' }} />
+          <div style={{ position: 'absolute', top: '-10%', right: '-5%', width: '25rem', height: '25rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%', filter: 'blur(40px)' }} />
+          <div style={{ position: 'absolute', bottom: '-10%', left: '-5%', width: '20rem', height: '20rem', backgroundColor: 'rgba(193, 132, 85, 0.2)', borderRadius: '50%', filter: 'blur(40px)' }} />
 
           <div style={{ position: 'relative', zIndex: 10 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 1rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '9999px', color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.25rem', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '9999px', color: 'white', fontSize: '0.875rem', fontWeight: 600, marginBottom: '2rem' }}
+            >
               <Phone size={14} />
-              Start in 2 minutes
-            </div>
+              Start Your Digital Journey Today
+            </motion.div>
 
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '3rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem', letterSpacing: '-0.025em' }}>
               Ready to Transform Your Godown?
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.7)', maxWidth: '36rem', margin: '0 auto 2rem auto', lineHeight: 1.6 }}>
-              Join thousands of godown operators across India who are already
-              managing their business with just their voice. No smartphone
-              needed.
+            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '1.25rem', maxWidth: '42rem', margin: '0 auto 3rem auto', lineHeight: 1.6 }}>
+              Join forward-thinking operators across India who are already managing their business with just their voice. No apps. No typing. Just talk.
             </p>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
               <Button
                 size="lg"
-                style={{ backgroundColor: 'var(--color-cream)', color: 'var(--color-brand-600)' }}
-                icon={<ArrowRight size={18} />}
+                style={{ 
+                  backgroundColor: 'white', 
+                  color: 'var(--color-brand-800)', 
+                  boxShadow: '0 12px 24px rgba(0,0,0,0.15)'
+                }}
+                icon={<ArrowRight size={20} />}
                 onClick={() => window.location.href = '/dashboard'}
               >
-                Open Dashboard
+                Launch Dashboard
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}
-                icon={<Phone size={18} />}
+                style={{ 
+                  borderColor: 'rgba(255,255,255,0.8)', 
+                  color: 'white', 
+                  backgroundColor: 'transparent'
+                }}
+                icon={<Phone size={20} />}
                 onClick={() => window.location.href = 'tel:+911800782744'}
               >
                 Try Demo Call
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

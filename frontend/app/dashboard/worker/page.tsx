@@ -25,16 +25,18 @@ const statusConfig: Record<string, { variant: "warning" | "default" | "success";
 
 export default function WorkerDashboard() {
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-brand-800">Worker Dashboard</h1>
-        <p className="text-sm text-muted mt-1">
-          Your tasks and assignments for today
-        </p>
+    <div className="dashboard-wrapper">
+      <div className="dashboard-header">
+        <div>
+          <h1 className="dashboard-title">Worker Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Your tasks and assignments for today
+          </p>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid-4">
         <StatCard title="Assigned Tasks" value="5" change="3 pending" changeType="neutral" icon={Package} />
         <StatCard title="Orders to Pack" value="2" change="High priority" changeType="negative" icon={ShoppingCart} />
         <StatCard title="Voice Commands" value="8" subtitle="Today" icon={Phone} />
@@ -42,28 +44,28 @@ export default function WorkerDashboard() {
       </div>
 
       {/* Tasks */}
-      <div className="bg-white rounded-[12px] border border-divider shadow-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-divider">
-          <h3 className="text-lg font-semibold text-brand-800">Today&apos;s Tasks</h3>
+      <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-divider)' }}>
+          <h3 className="dashboard-card-title">Today&apos;s Tasks</h3>
         </div>
-        <div className="divide-y divide-divider">
-          {workerTasks.map((task) => {
+        <div className="d-flex" style={{ flexDirection: 'column' }}>
+          {workerTasks.map((task, index) => {
             const statusCfg = statusConfig[task.status];
             return (
-              <div key={task.id} className="px-6 py-4 flex items-center justify-between hover:bg-brand-50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${priorityConfig[task.priority]}`}>
+              <div key={task.id} className="d-flex align-center justify-between" style={{ padding: '1rem 1.5rem', borderBottom: index < workerTasks.length - 1 ? '1px solid var(--color-divider)' : 'none', transition: 'background-color 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-brand-50)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <div className="d-flex align-center gap-4">
+                  <div className={`d-flex align-center justify-center ${priorityConfig[task.priority]}`} style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700 }}>
                     {task.id}
                   </div>
                   <div>
-                    <p className="font-medium text-brand-800">{task.task}</p>
-                    <p className="text-xs text-muted">
+                    <p style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{task.task}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '0.125rem' }}>
                       {task.product} · {task.qty} · Assigned at {task.assignedAt}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${priorityConfig[task.priority]}`}>
+                <div className="d-flex align-center gap-2">
+                  <span className={`${priorityConfig[task.priority]}`} style={{ padding: '0.125rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500 }}>
                     {task.priority}
                   </span>
                   <Badge variant={statusCfg.variant} dot size="sm">

@@ -1,108 +1,59 @@
 "use client";
-import { LuMic as Mic, LuPackage as Package, LuBrain as Brain, LuUsers as Users, LuShoppingCart as ShoppingCart, LuReceipt as Receipt, LuTruck as Truck, LuMessageSquare as MessageSquare, LuChartBar as BarChart3, LuLayers as Layers, LuWarehouse as Warehouse, LuGlobe as Globe } from 'react-icons/lu';
+import { LuMic as Mic, LuBrain as Brain, LuUsers as Users, LuReceipt as Receipt, LuMessageSquare as MessageSquare, LuGlobe as Globe } from 'react-icons/lu';
 import { motion } from "framer-motion";
 
 const features = [
   {
     icon: Mic,
     title: "Voice-First Operations",
-    description:
-      "Manage inventory, orders, and tasks using simple multilingual voice commands. Works in Hindi, English, and Hinglish.",
-    accent: "#6B4226",
-  },
-  {
-    icon: Package,
-    title: "Smart Inventory Management",
-    description:
-      "Track real-time stock with automatic updates and discrepancy alerts. Voice-based stock entry and correction.",
-    accent: "#8B5E3C",
+    description: "Manage everything using simple multilingual voice commands. No apps or typing required.",
+    accent: "var(--color-brand-600)",
   },
   {
     icon: Brain,
     title: "AI Stock Intelligence",
-    description:
-      "Predict demand 14 days ahead, prevent stockouts, and optimize reordering decisions using ML models.",
-    accent: "#D4956A",
+    description: "Predict demand 14 days ahead and optimize reordering using advanced ML models.",
+    accent: "var(--color-brand-500)",
   },
   {
     icon: Users,
     title: "Supplier Automation",
-    description:
-      "Automatically place orders and coordinate with primary and backup suppliers via automated calls.",
-    accent: "#6B4226",
-  },
-  {
-    icon: ShoppingCart,
-    title: "Voice-Based Order Management",
-    description:
-      "Enable buyers to place, track, and manage orders through voice. No app needed — just a phone call.",
-    accent: "#8B5E3C",
+    description: "Automatically coordinate with primary and backup suppliers via automated calls.",
+    accent: "var(--color-brand-700)",
   },
   {
     icon: Receipt,
-    title: "Billing & Payments",
-    description:
-      "Generate GST invoices automatically, track credit per buyer, and automate payment reminders via Telegram.",
-    accent: "#D4956A",
-  },
-  {
-    icon: Truck,
-    title: "Delivery Tracking",
-    description:
-      "Monitor order status and ensure timely delivery with automated follow-ups and ETA notifications.",
-    accent: "#6B4226",
+    title: "Smart Billing",
+    description: "Auto-generate GST invoices and track buyer credit with automated Telegram reminders.",
+    accent: "var(--color-brand-800)",
   },
   {
     icon: MessageSquare,
-    title: "AI Negotiation & Control",
-    description:
-      "Handle price negotiations with a 4-tier strategy while maintaining margin rules with owner oversight.",
-    accent: "#8B5E3C",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics & Reporting",
-    description:
-      "Insights on sales trends, top products, customer performance, and automated report generation.",
-    accent: "#D4956A",
-  },
-  {
-    icon: Layers,
-    title: "Unified AI Intelligence",
-    description:
-      "All operations connected through a central AI system that learns and improves continuously.",
-    accent: "#6B4226",
-  },
-  {
-    icon: Warehouse,
-    title: "Multi-Warehouse Management",
-    description:
-      "Manage multiple godowns under one account with consolidated stock visibility and inter-warehouse transfers.",
-    accent: "#8B5E3C",
+    title: "AI Negotiation",
+    description: "Smart 4-tier price negotiation strategies that maintain your margins automatically.",
+    accent: "var(--color-brand-600)",
   },
   {
     icon: Globe,
     title: "22 Language Support",
-    description:
-      "Full interface translation for all 22 scheduled Indian languages. Voice processing in Hindi, English, and Hinglish.",
-    accent: "#D4956A",
+    description: "Interface and voice processing in all major Indian languages for total accessibility.",
+    accent: "var(--color-brand-500)",
   },
 ];
 
 export default function FeaturesGrid() {
   return (
-    <section className="section section-alt" id="features-grid">
+    <section className="section bg-gradient-mesh" id="features-grid">
       <div className="container">
         <div className="section-header">
-          <span className="section-badge">
-            Features
+          <span className="section-badge glass-dark">
+            Capabilities
           </span>
-          <h2 className="section-title">
-            Everything You Need to Run a Modern Godown
+          <h2 className="section-title text-gradient">
+            Powerful Features for Modern Godowns
           </h2>
           <p className="section-desc">
-            From voice-based inventory management to AI-powered demand
-            forecasting — <span className="notranslate" translate="no">Stash</span> covers every aspect of godown operations.
+            Everything you need to digitize your operations without changing how you work.
           </p>
         </div>
 
@@ -122,22 +73,23 @@ export default function FeaturesGrid() {
               <motion.div
                 key={i}
                 variants={{
-                  hidden: { opacity: 0, y: 30 },
+                  hidden: { opacity: 0, y: 20 },
                   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
                 }}
-                className="feature-card"
-                style={{ borderLeftWidth: "4px", borderLeftColor: feature.accent }}
+                className="feature-card glass"
+                style={{ position: 'relative', overflow: 'hidden', padding: '2.5rem 2rem' }}
               >
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '6px', height: '100%', backgroundColor: feature.accent }} />
                 <div
                   className="feature-icon-wrapper"
-                  style={{ backgroundColor: `${feature.accent}15` }}
+                  style={{ backgroundColor: `${feature.accent}15`, borderRadius: '1rem', width: '3.5rem', height: '3.5rem', marginBottom: '1.5rem' }}
                 >
-                  <Icon size={20} style={{ color: feature.accent }} />
+                  <Icon size={26} style={{ color: feature.accent }} />
                 </div>
-                <h3 className="feature-title">
+                <h3 className="feature-title" style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--color-brand-900)' }}>
                   {feature.title}
                 </h3>
-                <p className="feature-desc">
+                <p className="feature-desc" style={{ fontSize: '1rem', color: 'var(--color-muted)', lineHeight: 1.6 }}>
                   {feature.description}
                 </p>
               </motion.div>

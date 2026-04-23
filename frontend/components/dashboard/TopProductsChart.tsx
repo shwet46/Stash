@@ -40,14 +40,14 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white border border-divider rounded-[8px] shadow-lg p-3">
-        <p className="text-sm font-medium text-brand-800 mb-1">
+      <div style={{ backgroundColor: 'white', border: '1px solid var(--color-divider)', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '0.75rem' }}>
+        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)', marginBottom: '0.25rem' }}>
           {payload[0].payload.name}
         </p>
-        <p className="text-xs text-muted">
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
           Revenue: ₹{payload[0].value.toLocaleString("en-IN")}
         </p>
-        <p className="text-xs text-muted">
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
           Orders: {payload[0].payload.orders}
         </p>
       </div>
@@ -58,12 +58,14 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
 
 export default function TopProductsChart() {
   return (
-    <div className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-brand-800">
-          Top Products by Revenue
-        </h3>
-        <p className="text-sm text-muted">This month</p>
+    <div className="dashboard-card">
+      <div className="dashboard-card-header mb-4">
+        <div>
+          <h3 className="dashboard-card-title">
+            Top Products by Revenue
+          </h3>
+          <p className="dashboard-card-subtitle">This month</p>
+        </div>
       </div>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={productData} layout="vertical" barSize={20}>

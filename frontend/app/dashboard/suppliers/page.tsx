@@ -25,18 +25,20 @@ export default function SuppliersPage() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="dashboard-wrapper">
+      <div className="dashboard-header">
         <div>
-          <h1 className="text-2xl font-bold text-brand-800">Suppliers</h1>
-          <p className="text-sm text-muted mt-1">
+          <h1 className="dashboard-title">Suppliers</h1>
+          <p className="dashboard-subtitle">
             {suppliersData.length} suppliers · {suppliersData.filter(s => s.status === "active").length} active
           </p>
         </div>
-        <Button size="sm" icon={<Plus size={16} />}>Add Supplier</Button>
+        <div className="dashboard-header-right">
+          <Button size="sm" icon={<Plus size={16} />}>Add Supplier</Button>
+        </div>
       </div>
 
-      <div className="max-w-sm">
+      <div style={{ maxWidth: '24rem' }}>
         <Input
           placeholder="Search suppliers..."
           value={search}
@@ -45,23 +47,23 @@ export default function SuppliersPage() {
         />
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid-3">
         {filtered.map((sup) => (
-          <div key={sup.id} className="bg-white rounded-[12px] border border-divider shadow-card p-5 hover:shadow-[0_2px_8px_rgba(107,66,38,0.12),0_8px_24px_rgba(107,66,38,0.10)] transition-all duration-300">
-            <div className="flex items-start justify-between mb-3">
+          <div key={sup.id} className="dashboard-card">
+            <div className="d-flex align-center justify-between mb-2" style={{ alignItems: 'flex-start' }}>
               <div>
-                <h3 className="font-semibold text-brand-800">{sup.name}</h3>
-                <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
+                <h3 style={{ fontWeight: 600, color: 'var(--color-brand-800)' }}>{sup.name}</h3>
+                <p className="d-flex align-center gap-2" style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '0.125rem' }}>
                   <Phone size={12} />
                   {sup.phone}
                 </p>
               </div>
-              <button className="p-1 rounded hover:bg-brand-50 text-muted cursor-pointer">
+              <button style={{ padding: '0.25rem', borderRadius: '0.25rem', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer' }}>
                 <MoreVertical size={16} />
               </button>
             </div>
 
-            <div className="flex items-center gap-2 mb-3">
+            <div className="d-flex align-center gap-2" style={{ marginBottom: '0.75rem' }}>
               <Badge variant="outline" size="sm">{sup.product}</Badge>
               <Badge variant={sup.priority === 1 ? "default" : "outline"} size="sm">
                 P{sup.priority}
@@ -71,13 +73,13 @@ export default function SuppliersPage() {
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-divider">
-              <div className="flex items-center gap-1">
-                <Star size={14} className="text-warning fill-warning" />
-                <span className="text-sm font-medium text-brand-800">{sup.rating}</span>
-                <span className="text-xs text-muted ml-1">({sup.orders} orders)</span>
+            <div className="d-flex align-center justify-between" style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--color-divider)' }}>
+              <div className="d-flex align-center gap-2">
+                <Star size={14} style={{ color: 'var(--color-warning)', fill: 'var(--color-warning)' }} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{sup.rating}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginLeft: '0.25rem' }}>({sup.orders} orders)</span>
               </div>
-              <span className="text-xs text-muted">Last: {sup.lastContacted}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Last: {sup.lastContacted}</span>
             </div>
           </div>
         ))}

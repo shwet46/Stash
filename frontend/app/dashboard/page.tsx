@@ -94,19 +94,19 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="dashboard-wrapper">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="dashboard-header">
         <div>
-          <h1 className="text-2xl font-bold text-brand-800">
+          <h1 className="dashboard-title">
             {greeting}, Shweta 👋
           </h1>
-          <p className="text-muted text-sm mt-1">
+          <p className="dashboard-subtitle">
             Here&apos;s what&apos;s happening with your godowns today.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted">
+        <div className="dashboard-header-right">
+          <span className="dashboard-date">
             {new Date().toLocaleDateString("en-IN", {
               weekday: "long",
               year: "numeric",
@@ -118,28 +118,28 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid-4">
         {stats.map((stat, i) => (
           <StatCard key={i} {...stat} />
         ))}
       </div>
 
       {/* Charts row */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid-2">
         <SalesChart />
         <TopProductsChart />
       </div>
 
       {/* Alerts and Recent Orders */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid-3">
         {/* Alerts */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-brand-800">
+        <div style={{ gridColumn: "span 1" }}>
+          <div className="dashboard-card">
+            <div className="dashboard-card-header mb-4">
+              <h3 className="dashboard-card-title">
                 Live Alerts
               </h3>
-              <span className="flex items-center gap-1 text-xs text-muted">
+              <span className="d-flex align-center gap-2 text-xs text-muted">
                 <AlertTriangle size={12} />
                 {alerts.length} active
               </span>
@@ -153,14 +153,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Orders */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-[12px] border border-divider shadow-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-divider flex items-center justify-between">
+        <div style={{ gridColumn: "span 2" }}>
+          <div className="dashboard-table-wrapper" style={{ marginTop: 0 }}>
+            <div className="d-flex align-center justify-between" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-divider)' }}>
               <div>
-                <h3 className="text-lg font-semibold text-brand-800">
+                <h3 className="dashboard-card-title">
                   Recent Orders
                 </h3>
-                <p className="text-sm text-muted">Latest order activity</p>
+                <p className="dashboard-card-subtitle">Latest order activity</p>
               </div>
               <a
                 href="/dashboard/orders"
@@ -169,50 +169,45 @@ export default function DashboardPage() {
                 View All →
               </a>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-surface">
+            <div style={{ overflowX: 'auto' }}>
+              <table className="dashboard-table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+                    <th>
                       Order ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+                    <th>
                       Buyer
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+                    <th>
                       Product
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+                    <th>
                       Amount
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+                    <th>
                       Status
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-divider">
+                <tbody>
                   {recentOrders.map((order, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-brand-50 transition-colors"
-                    >
-                      <td className="px-6 py-3 font-medium text-brand-600">
+                    <tr key={i}>
+                      <td style={{ fontWeight: 500, color: 'var(--color-brand-600)' }}>
                         {order.id}
                       </td>
-                      <td className="px-6 py-3 text-brand-800">
+                      <td style={{ color: 'var(--color-brand-800)' }}>
                         {order.buyer}
                       </td>
-                      <td className="px-6 py-3 text-brand-700">
+                      <td style={{ color: 'var(--color-brand-700)' }}>
                         {order.product}
-                        <span className="text-muted ml-1">({order.qty})</span>
+                        <span className="text-muted ml-1" style={{ marginLeft: '0.25rem' }}>({order.qty})</span>
                       </td>
-                      <td className="px-6 py-3 font-medium text-brand-800">
+                      <td style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>
                         {order.amount}
                       </td>
-                      <td className="px-6 py-3">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status]}`}
-                        >
+                      <td>
+                        <span className={`badge ${order.status === 'delivered' ? 'badge-success' : order.status === 'dispatched' ? 'badge-info' : 'badge-warning'}`}>
                           {order.status}
                         </span>
                       </td>

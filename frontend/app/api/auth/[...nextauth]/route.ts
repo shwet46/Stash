@@ -1,6 +1,12 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+const serverApiUrl =
+  process.env.INTERNAL_API_URL ||
+  process.env.BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -13,7 +19,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.phone || !credentials?.password) return null;
 
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/login`, {
+          const res = await fetch(`${serverApiUrl}/api/auth/login`, {
             method: "POST",
             body: JSON.stringify({
               phone: credentials.phone,
@@ -26,7 +32,7 @@ export const authOptions: NextAuthOptions = {
 
           if (res.ok && data.access_token) {
             // Fetch user info with the token
-            const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/me`, {
+            const userRes = await fetch(`${serverApiUrl}/api/auth/me`, {
               headers: { "Authorization": `Bearer ${data.access_token}` },
             });
             const userData = await userRes.json();

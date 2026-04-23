@@ -45,48 +45,47 @@ const suppliers = [
 
 export default function SupplierTable() {
   return (
-    <div className="bg-white rounded-[12px] border border-divider shadow-card overflow-hidden">
-      <div className="px-6 py-4 border-b border-divider">
-        <h3 className="text-lg font-semibold text-brand-800">
-          Active Suppliers
-        </h3>
-        <p className="text-sm text-muted">Top supplier connections</p>
+    <div className="dashboard-table-wrapper" style={{ marginTop: 0 }}>
+      <div className="d-flex align-center justify-between" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-divider)' }}>
+        <div>
+          <h3 className="dashboard-card-title">
+            Active Suppliers
+          </h3>
+          <p className="dashboard-card-subtitle">Top supplier connections</p>
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-surface">
+      <div style={{ overflowX: 'auto' }}>
+        <table className="dashboard-table">
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+              <th>
                 Supplier
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+              <th>
                 Product
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+              <th>
                 Priority
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+              <th>
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
+              <th>
                 Last Contact
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-divider">
+          <tbody>
             {suppliers.map((sup, i) => (
-              <tr
-                key={i}
-                className="hover:bg-brand-50 transition-colors"
-              >
-                <td className="px-6 py-4">
+              <tr key={i}>
+                <td>
                   <div>
-                    <p className="font-medium text-brand-800">{sup.name}</p>
-                    <p className="text-xs text-muted">{sup.phone}</p>
+                    <p style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{sup.name}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{sup.phone}</p>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-brand-700">{sup.product}</td>
-                <td className="px-6 py-4">
+                <td style={{ color: 'var(--color-brand-700)' }}>{sup.product}</td>
+                <td>
                   <Badge
                     variant={sup.priority === 1 ? "default" : "outline"}
                     size="sm"
@@ -94,7 +93,7 @@ export default function SupplierTable() {
                     P{sup.priority}
                   </Badge>
                 </td>
-                <td className="px-6 py-4">
+                <td>
                   <Badge
                     variant={sup.status === "active" ? "success" : "warning"}
                     dot
@@ -103,7 +102,7 @@ export default function SupplierTable() {
                     {sup.status}
                   </Badge>
                 </td>
-                <td className="px-6 py-4 text-muted">{sup.lastContacted}</td>
+                <td style={{ color: 'var(--color-muted)' }}>{sup.lastContacted}</td>
               </tr>
             ))}
           </tbody>

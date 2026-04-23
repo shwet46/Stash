@@ -39,15 +39,15 @@ export default function OrdersPage() {
   const totalAmount = filtered.reduce((sum, o) => sum + o.amount, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="dashboard-wrapper">
+      <div className="dashboard-header">
         <div>
-          <h1 className="text-2xl font-bold text-brand-800">Orders</h1>
-          <p className="text-sm text-muted mt-1">
+          <h1 className="dashboard-title">Orders</h1>
+          <p className="dashboard-subtitle">
             {ordersData.length} orders · Total: ₹{totalAmount.toLocaleString("en-IN")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="dashboard-header-right">
           <Button variant="outline" size="sm" icon={<Download size={16} />}>
             Export
           </Button>
@@ -57,8 +57,8 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[240px] max-w-sm">
+      <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '240px', maxWidth: '24rem' }}>
           <Input
             placeholder="Search by order ID or buyer..."
             value={search}
@@ -66,16 +66,22 @@ export default function OrdersPage() {
             icon={<Search size={16} />}
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="d-flex align-center gap-2">
           {["all", "pending", "dispatched", "delivered"].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                statusFilter === s
-                  ? "bg-brand-600 text-white"
-                  : "bg-white border border-divider text-brand-700 hover:bg-brand-50"
-              }`}
+              style={{
+                padding: '0.375rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'colors 0.2s',
+                border: statusFilter === s ? '1px solid var(--color-brand-600)' : '1px solid var(--color-divider)',
+                backgroundColor: statusFilter === s ? 'var(--color-brand-600)' : 'white',
+                color: statusFilter === s ? 'white' : 'var(--color-brand-700)'
+              }}
             >
               {s === "all" ? "All Orders" : s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
@@ -83,48 +89,48 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-[12px] border border-divider shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
+      <div className="dashboard-table-wrapper">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="dashboard-table">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Order ID</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Buyer</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Order Date</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Est. Delivery</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Action</th>
+                <th>Order ID</th>
+                <th>Buyer</th>
+                <th>Product</th>
+                <th>Amount</th>
+                <th>Order Date</th>
+                <th>Est. Delivery</th>
+                <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-divider">
+            <tbody>
               {filtered.map((order) => {
                 const statusCfg = statusConfig[order.status];
                 return (
-                  <tr key={order.id} className="hover:bg-brand-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-brand-600">{order.id}</td>
-                    <td className="px-6 py-4">
+                  <tr key={order.id}>
+                    <td style={{ fontWeight: 500, color: 'var(--color-brand-600)' }}>{order.id}</td>
+                    <td>
                       <div>
-                        <p className="font-medium text-brand-800">{order.buyer}</p>
-                        <p className="text-xs text-muted">{order.phone}</p>
+                        <p style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{order.buyer}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{order.phone}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-brand-700">
+                    <td style={{ color: 'var(--color-brand-700)' }}>
                       {order.product} <span className="text-muted">({order.qty})</span>
                     </td>
-                    <td className="px-6 py-4 font-medium text-brand-800">
+                    <td style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>
                       ₹{order.amount.toLocaleString("en-IN")}
                     </td>
-                    <td className="px-6 py-4 text-muted">{order.date}</td>
-                    <td className="px-6 py-4 text-muted">{order.delivery}</td>
-                    <td className="px-6 py-4">
+                    <td style={{ color: 'var(--color-muted)' }}>{order.date}</td>
+                    <td style={{ color: 'var(--color-muted)' }}>{order.delivery}</td>
+                    <td>
                       <Badge variant={statusCfg.variant} dot size="sm">
                         {statusCfg.label}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4">
-                      <button className="p-1.5 rounded-lg hover:bg-brand-50 text-muted hover:text-brand-600 transition-colors cursor-pointer">
+                    <td>
+                      <button style={{ padding: '0.375rem', borderRadius: '0.5rem', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer' }}>
                         <Eye size={16} />
                       </button>
                     </td>

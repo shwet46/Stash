@@ -33,88 +33,91 @@ const statusConfig: Record<string, { variant: "warning" | "default" | "success";
 
 export default function DeliveriesPage() {
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-brand-800">Deliveries</h1>
-        <p className="text-sm text-muted mt-1">
-          Track active deliveries and shipment status
-        </p>
+    <div className="dashboard-wrapper">
+      <div className="dashboard-header">
+        <div>
+          <h1 className="dashboard-title">Deliveries</h1>
+          <p className="dashboard-subtitle">
+            Track active deliveries and shipment status
+          </p>
+        </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
-            <Package size={20} className="text-warning" />
+      <div className="grid-3">
+        <div className="dashboard-card d-flex align-center gap-4">
+          <div style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Package size={20} style={{ color: 'var(--color-warning)' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-800">3</p>
-            <p className="text-xs text-muted">Active Shipments</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>3</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Active Shipments</p>
           </div>
         </div>
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-            <TruckIcon size={20} className="text-blue-500" />
+        <div className="dashboard-card d-flex align-center gap-4">
+          <div style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <TruckIcon size={20} style={{ color: '#3B82F6' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-800">2</p>
-            <p className="text-xs text-muted">In Transit</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>2</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>In Transit</p>
           </div>
         </div>
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-            <CheckCircle size={20} className="text-success" />
+        <div className="dashboard-card d-flex align-center gap-4">
+          <div style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-800">1</p>
-            <p className="text-xs text-muted">Delivered Today</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>1</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Delivered Today</p>
           </div>
         </div>
       </div>
 
       {/* Delivery cards with timeline */}
-      <div className="space-y-4">
+      <div className="d-flex" style={{ flexDirection: 'column', gap: '1rem' }}>
         {deliveries.map((del) => {
           const statusCfg = statusConfig[del.status];
           return (
-            <div key={del.id} className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-              <div className="flex items-start justify-between mb-4">
+            <div key={del.id} className="dashboard-card">
+              <div className="d-flex align-center justify-between mb-4" style={{ alignItems: 'flex-start' }}>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-brand-600">{del.id}</h3>
+                  <div className="d-flex align-center gap-2">
+                    <h3 style={{ fontWeight: 600, color: 'var(--color-brand-600)' }}>{del.id}</h3>
                     <Badge variant={statusCfg.variant} dot size="sm">{statusCfg.label}</Badge>
                   </div>
-                  <p className="text-sm text-brand-800 mt-1">
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-brand-800)', marginTop: '0.25rem' }}>
                     {del.product} ({del.qty}) → {del.buyer}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted">ETA</p>
-                  <p className="text-sm font-medium text-brand-800">{del.eta}</p>
-                  <p className="text-xs text-muted mt-1">Driver: {del.driver}</p>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>ETA</p>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{del.eta}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '0.25rem' }}>Driver: {del.driver}</p>
                 </div>
               </div>
 
               {/* Timeline */}
-              <div className="border-t border-divider pt-4">
-                <div className="flex items-start gap-4 overflow-x-auto pb-2">
+              <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: '1rem' }}>
+                <div className="d-flex" style={{ alignItems: 'flex-start', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
                   {del.updates.map((update, i) => (
-                    <div key={i} className="flex items-start gap-2 min-w-[180px]">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                          i === del.updates.length - 1 ? "bg-brand-600" : "bg-brand-300"
-                        }`} />
+                    <div key={i} className="d-flex" style={{ alignItems: 'flex-start', gap: '0.5rem', minWidth: '180px' }}>
+                      <div className="d-flex" style={{ flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{
+                          width: '0.75rem', height: '0.75rem', borderRadius: '9999px', flexShrink: 0,
+                          backgroundColor: i === del.updates.length - 1 ? 'var(--color-brand-600)' : 'var(--color-brand-300)'
+                        }} />
                         {i < del.updates.length - 1 && (
-                          <div className="w-0.5 h-8 bg-brand-200" />
+                          <div style={{ width: '2px', height: '2rem', backgroundColor: 'var(--color-brand-200)' }} />
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-brand-800">{update.status}</p>
-                        <p className="text-xs text-muted flex items-center gap-1">
+                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{update.status}</p>
+                        <p className="d-flex align-center gap-2" style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
                           <Clock size={10} />
                           {update.time}
                         </p>
-                        <p className="text-xs text-muted flex items-center gap-1">
+                        <p className="d-flex align-center gap-2" style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
                           <MapPin size={10} />
                           {update.location}
                         </p>

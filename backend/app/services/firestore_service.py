@@ -24,10 +24,22 @@ class FirestoreService:
     def _init_client(self) -> None:
         """Initialize Firestore client with safe defaults for local and docker runs."""
         try:
-            if not settings.GOOGLE_APPLICATION_CREDENTIALS:
-                credentials_path = Path(__file__).resolve().parents[2] / "credentials.json"
-                if credentials_path.exists():
-                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
+            backend_root = Path(__file__).resolve().parents[2]
+            credentials_path = None
+
+            if settings.GOOGLE_APPLICATION_CREDENTIALS:
+                configured_path = Path(settings.GOOGLE_APPLICATION_CREDENTIALS)
+                if not configured_path.is_absolute():
+                    configured_path = backend_root / configured_path
+                if configured_path.exists():
+                    credentials_path = configured_path.resolve()
+            else:
+                default_path = backend_root / "credentials.json"
+                if default_path.exists():
+                    credentials_path = default_path.resolve()
+
+            if credentials_path:
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 
             database_name = settings.FIRESTORE_DATABASE or "stash"
             self.db = AsyncClient(

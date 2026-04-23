@@ -24,23 +24,21 @@ export default function StatCard({
   };
 
   return (
-    <div className="bg-white rounded-[12px] border border-divider shadow-card p-5 hover:shadow-[0_2px_8px_rgba(107,66,38,0.12),0_8px_24px_rgba(107,66,38,0.10)] transition-all duration-300">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center">
-          <Icon size={20} className="text-brand-600" />
+    <div className="dashboard-card">
+      <div className="d-flex align-center justify-between mb-4">
+        <div style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'var(--color-brand-50)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={20} style={{ color: 'var(--color-brand-600)' }} />
         </div>
         {change && (
-          <span
-            className={`text-xs font-medium px-2 py-0.5 rounded-full ${changeColors[changeType]}`}
-          >
+          <span className={`badge ${changeType === 'positive' ? 'badge-success' : changeType === 'negative' ? 'badge-error' : 'badge-warning'}`}>
             {change}
           </span>
         )}
       </div>
-      <h3 className="text-sm text-muted font-medium">{title}</h3>
-      <p className="text-2xl font-bold text-brand-800 mt-1">{value}</p>
+      <h3 className="dashboard-card-subtitle">{title}</h3>
+      <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)', marginTop: '0.25rem' }}>{value}</p>
       {subtitle && (
-        <p className="text-xs text-muted mt-1">{subtitle}</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '0.25rem' }}>{subtitle}</p>
       )}
     </div>
   );

@@ -1,107 +1,101 @@
+"use client";
+import { motion } from "framer-motion";
+
 const techCategories = [
   {
     title: "Frontend",
     items: [
-      { name: "Next.js 14", desc: "App Router, Server Components" },
-      { name: "Tailwind CSS", desc: "Utility-first styling" },
-      { name: "Recharts", desc: "Data visualization" },
-      { name: "NextAuth.js", desc: "Authentication" },
-      { name: "Lucide React", desc: "Icon library" },
+      { name: "Next.js 14", desc: "App Router & RSC" },
+      { name: "Custom CSS", desc: "Design Token System" },
+      { name: "Framer Motion", desc: "Premium Animations" },
+      { name: "NextAuth.js", desc: "Secure Auth" },
     ],
   },
   {
     title: "Backend",
     items: [
-      { name: "FastAPI", desc: "Async Python framework" },
+      { name: "FastAPI", desc: "Async Python" },
       { name: "SQLAlchemy v2", desc: "Async ORM" },
-      { name: "Celery", desc: "Task queue" },
-      { name: "Redis", desc: "Caching & pub/sub" },
-      { name: "WeasyPrint", desc: "PDF generation" },
+      { name: "Celery", desc: "Task Queue" },
+      { name: "Redis", desc: "Caching" },
     ],
   },
   {
     title: "AI / ML",
     items: [
-      { name: "Gemini 3.0 Flash", desc: "Intent extraction & NLP" },
-      { name: "Vertex AI", desc: "Prophet & XGBoost models" },
-      { name: "Cloud Speech-to-Text v2", desc: "Voice transcription" },
-      { name: "gTTS", desc: "Text-to-speech responses" },
+      { name: "Gemini 3.0 Flash", desc: "NLP Intent Extraction" },
+      { name: "Vertex AI", desc: "Forecasting Models" },
+      { name: "Cloud STT v2", desc: "Voice Processing" },
+      { name: "Google Cloud TTS", desc: "Voice Response" },
     ],
   },
   {
-    title: "Communication",
+    title: "Cloud",
     items: [
-      { name: "Twilio Voice", desc: "Inbound & outbound calls" },
-      { name: "Telegram Bot API", desc: "Customer notifications" },
-    ],
-  },
-  {
-    title: "Infrastructure",
-    items: [
-      { name: "Google Cloud Run", desc: "Backend hosting" },
-      { name: "Firebase Hosting", desc: "Frontend hosting" },
-      { name: "Cloud Pub/Sub", desc: "Event streaming" },
-      { name: "BigQuery", desc: "Analytics warehouse" },
-      { name: "PostgreSQL 16", desc: "With PostGIS extension" },
-    ],
-  },
-  {
-    title: "DevOps",
-    items: [
-      { name: "Docker", desc: "Containerization" },
-      { name: "GitHub Actions", desc: "CI/CD pipeline" },
-      { name: "Google Maps API", desc: "ETA & routing" },
+      { name: "Cloud Run", desc: "Backend Hosting" },
+      { name: "Cloud SQL", desc: "PostgreSQL 16" },
+      { name: "BigQuery", desc: "Data Warehouse" },
+      { name: "Pub/Sub", desc: "Event Streaming" },
     ],
   },
 ];
 
 export default function TechStackSection() {
   return (
-    <section className="section section-alt" id="tech-stack-section">
+    <section className="section bg-gradient-mesh" id="tech-stack-section" style={{ backgroundColor: 'var(--color-brand-50)' }}>
       <div className="container">
         <div className="section-header">
-          <span className="section-badge">
-            Technology
+          <span className="section-badge glass-dark">
+            Our Stack
           </span>
-          <h2 className="section-title">
-            Built on Google Cloud & Open Source
+          <h2 className="section-title text-gradient">
+            Modern Tech for Modern Godowns
           </h2>
           <p className="section-desc">
-            Enterprise-grade infrastructure designed for scale, reliability, and
-            the unique needs of India&apos;s supply chain.
+            Built on top-tier cloud infrastructure and cutting-edge AI for maximum reliability.
           </p>
         </div>
 
-        <div className="grid-3">
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={{
+            visible: { transition: { staggerChildren: 0.1 } },
+            hidden: {}
+          }}
+          className="grid-4"
+        >
           {techCategories.map((cat, i) => (
-            <div
+            <motion.div
               key={i}
-              className="feature-card"
+              variants={{
+                hidden: { opacity: 0, scale: 0.95 },
+                visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } }
+              }}
+              className="feature-card glass"
             >
-              <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-brand-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-brand-600)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.5rem', textAlign: 'center' }}>
                 {cat.title}
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {cat.items.map((item, j) => (
                   <div
                     key={j}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: j === cat.items.length - 1 ? 'none' : '1px solid var(--color-divider)' }}
+                    style={{ paddingBottom: '0.75rem', borderBottom: j === cat.items.length - 1 ? 'none' : '1px solid var(--color-brand-100)' }}
                   >
-                    <div style={{ width: '0.5rem', height: '0.5rem', backgroundColor: 'var(--color-brand-400)', borderRadius: '50%', flexShrink: 0 }} />
-                    <div>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>
-                        {item.name}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginLeft: '0.5rem' }}>
-                        {item.desc}
-                      </span>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-brand-900)' }}>
+                      {item.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-muted)', marginTop: '0.125rem' }}>
+                      {item.desc}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

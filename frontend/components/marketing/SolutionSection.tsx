@@ -1,53 +1,51 @@
 "use client";
-import { LuMic as Mic, LuPackage as Package, LuBrain as Brain, LuTruck as Truck, LuReceipt as Receipt, LuChartBar as BarChart3, LuArrowRight as ArrowRight } from 'react-icons/lu';
+import { LuMic as Mic, LuPackage as Package, LuBrain as Brain, LuReceipt as Receipt, LuArrowRight as ArrowRight } from 'react-icons/lu';
 import { motion } from "framer-motion";
 
 const solutions = [
   {
     icon: Mic,
-    title: "Voice-Based Stock Updates",
-    problem: "Manual stock tracking leads to errors",
-    solution:
-      "Operators simply call and say 'Chana Dal 500 kg aaya hai' — AI updates inventory instantly with real-time syncing.",
+    title: "Voice Stock Control",
+    problem: "Manual tracking leads to errors",
+    solution: "Operators simply call and say what arrived. AI updates everything instantly.",
+    color: "var(--color-brand-600)"
   },
   {
     icon: Brain,
-    title: "AI Predicts & Auto-Reorders",
+    title: "Predictive Intelligence",
     problem: "Missed or delayed reorders",
-    solution:
-      "Machine learning forecasts demand 14 days ahead. When stock drops below threshold, suppliers are contacted automatically.",
+    solution: "ML forecasts demand 14 days ahead and alerts you before you run out.",
+    color: "var(--color-brand-500)"
   },
   {
     icon: Package,
-    title: "Automated Supplier Coordination",
-    problem: "Constant back-and-forth with suppliers",
-    solution:
-      "<span class=\"notranslate\" translate=\"no\">Stash</span> handles price negotiation, availability checks, and order placement via automated voice calls to suppliers.",
+    title: "Auto-Coordination",
+    problem: "Supplier back-and-forth",
+    solution: "Stash handles price checks and order placement via automated calls.",
+    color: "var(--color-brand-700)"
   },
   {
     icon: Receipt,
-    title: "Automated Billing & Reminders",
-    problem: "Payment delays and poor cash flow tracking",
-    solution:
-      "GST invoices auto-generated, credit tracked per buyer, payment reminders sent via Telegram in buyer's language.",
+    title: "Digital Billing",
+    problem: "Payment delays & gaps",
+    solution: "GST invoices and payment reminders sent automatically via Telegram.",
+    color: "var(--color-brand-800)"
   },
 ];
 
 export default function SolutionSection() {
   return (
-    <section className="section" id="solution-section">
+    <section className="section bg-white" id="solution-section">
       <div className="container">
         <div className="section-header">
-          <span className="section-badge" style={{ backgroundColor: 'var(--color-success)', color: 'white', opacity: 0.9 }}>
-            The Solution
+          <span className="section-badge glass-dark" style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
+            The Stash Solution
           </span>
           <h2 className="section-title">
-            How <span className="notranslate" translate="no">Stash</span> Solves It
+            The Future of Godown Management
           </h2>
           <p className="section-desc">
-            A voice-first, AI-powered platform that brings together inventory,
-            orders, supplier coordination, billing, and delivery into one
-            seamless system.
+            A voice-first platform that turns complex operations into simple conversations.
           </p>
         </div>
 
@@ -71,37 +69,38 @@ export default function SolutionSection() {
                   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
                 }}
                 className="feature-card"
+                style={{ backgroundColor: 'var(--color-brand-50)', border: '1px solid var(--color-brand-100)' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <div style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon size={20} style={{ color: 'white' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ width: '3rem', height: '3rem', backgroundColor: sol.color, borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 16px ${sol.color}20` }}>
+                    <Icon size={24} style={{ color: 'white' }} />
                   </div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-brand-900)' }}>
                     {sol.title}
                   </h3>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <span style={{ color: 'var(--color-error)', fontSize: '0.875rem', fontWeight: 500, marginTop: '0.125rem' }}>
-                      ✗
-                    </span>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>{sol.problem}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="glass" style={{ padding: '1rem', borderRadius: '0.75rem', border: '1px solid white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ color: 'var(--color-error)', fontSize: '0.875rem' }}>✕</span>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Old Way</p>
+                    </div>
+                    <p style={{ fontSize: '0.9375rem', color: 'var(--color-muted)' }}>{sol.problem}</p>
                   </div>
+                  
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <ArrowRight
-                      size={16}
-                      style={{ color: 'var(--color-brand-400)', transform: 'rotate(90deg)' }}
-                    />
+                    <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-brand-100)' }}>
+                      <ArrowRight size={14} style={{ color: 'var(--color-brand-600)', transform: 'rotate(90deg)' }} />
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <span style={{ color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 500, marginTop: '0.125rem' }}>
-                      ✓
-                    </span>
-                    <p 
-                      style={{ fontSize: '0.875rem', color: 'var(--color-brand-700)' }}
-                      dangerouslySetInnerHTML={{ __html: sol.solution }}
-                    />
+
+                  <div style={{ padding: '1rem', borderRadius: '0.75rem', backgroundColor: 'white', border: `1px solid ${sol.color}30`, boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ color: 'var(--color-success)', fontSize: '0.875rem' }}>✓</span>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-brand-700)', fontWeight: 600, textTransform: 'uppercase' }}>With Stash</p>
+                    </div>
+                    <p style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{sol.solution}</p>
                   </div>
                 </div>
               </motion.div>

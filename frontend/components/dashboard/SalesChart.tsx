@@ -37,10 +37,10 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white border border-divider rounded-[8px] shadow-lg p-3">
-        <p className="text-xs text-muted mb-1">{label}</p>
+      <div style={{ backgroundColor: 'white', border: '1px solid var(--color-divider)', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '0.75rem' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: '0.25rem' }}>{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-sm font-medium text-brand-800">
+          <p key={i} style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>
             {p.name}: {p.name === "sales" ? `₹${p.value.toLocaleString("en-IN")}` : p.value}
           </p>
         ))}
@@ -52,20 +52,20 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function SalesChart() {
   return (
-    <div className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="dashboard-card">
+      <div className="dashboard-card-header mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-brand-800">Sales Trend</h3>
-          <p className="text-sm text-muted">Last 14 days</p>
+          <h3 className="dashboard-card-title">Sales Trend</h3>
+          <p className="dashboard-card-subtitle">Last 14 days</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-brand-600 rounded" />
-            <span className="text-xs text-muted">Sales (₹)</span>
+        <div className="d-flex align-center gap-4">
+          <div className="d-flex align-center gap-2">
+            <span style={{ width: '0.75rem', height: '0.125rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '0.25rem' }} />
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Sales (₹)</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-brand-400 rounded" />
-            <span className="text-xs text-muted">Orders</span>
+          <div className="d-flex align-center gap-2">
+            <span style={{ width: '0.75rem', height: '0.125rem', backgroundColor: 'var(--color-brand-400)', borderRadius: '0.25rem' }} />
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Orders</span>
           </div>
         </div>
       </div>

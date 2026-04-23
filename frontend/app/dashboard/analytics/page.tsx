@@ -51,10 +51,10 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white border border-divider rounded-[8px] shadow-lg p-3">
-        <p className="text-xs text-muted mb-1">{label}</p>
+      <div style={{ backgroundColor: 'white', border: '1px solid var(--color-divider)', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '0.75rem' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginBottom: '0.25rem' }}>{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-sm font-medium text-brand-800">
+          <p key={i} style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>
             {p.name}: {p.name.includes("revenue") || p.name === "revenue"
               ? `₹${p.value.toLocaleString("en-IN")}`
               : p.value}
@@ -68,21 +68,23 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function AnalyticsPage() {
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="dashboard-wrapper">
+      <div className="dashboard-header">
         <div>
-          <h1 className="text-2xl font-bold text-brand-800">Analytics</h1>
-          <p className="text-sm text-muted mt-1">
+          <h1 className="dashboard-title">Analytics</h1>
+          <p className="dashboard-subtitle">
             Business insights and performance metrics
           </p>
         </div>
-        <Button variant="outline" size="sm" icon={<Download size={16} />}>
-          Generate Report
-        </Button>
+        <div className="dashboard-header-right">
+          <Button variant="outline" size="sm" icon={<Download size={16} />}>
+            Generate Report
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid-4">
         <StatCard title="Total Revenue (6M)" value="₹57,50,000" change="+18%" changeType="positive" icon={IndianRupee} />
         <StatCard title="Total Orders (6M)" value="1,055" change="+23%" changeType="positive" icon={ShoppingCart} />
         <StatCard title="Avg. Order Value" value="₹5,450" change="+5%" changeType="positive" icon={TrendingUp} />
@@ -90,10 +92,10 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Revenue chart + Category pie */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-[12px] border border-divider shadow-card p-6">
-          <h3 className="text-lg font-semibold text-brand-800 mb-1">Monthly Revenue</h3>
-          <p className="text-sm text-muted mb-6">Last 7 months</p>
+      <div className="grid-3">
+        <div className="dashboard-card" style={{ gridColumn: "span 2" }}>
+          <h3 className="dashboard-card-title mb-2">Monthly Revenue</h3>
+          <p className="dashboard-card-subtitle mb-4" style={{ marginBottom: '1.5rem' }}>Last 7 months</p>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={monthlyRevenue}>
               <defs>
@@ -111,9 +113,9 @@ export default function AnalyticsPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-          <h3 className="text-lg font-semibold text-brand-800 mb-1">Revenue by Category</h3>
-          <p className="text-sm text-muted mb-4">Current month</p>
+        <div className="dashboard-card">
+          <h3 className="dashboard-card-title mb-2">Revenue by Category</h3>
+          <p className="dashboard-card-subtitle mb-4" style={{ marginBottom: '1rem' }}>Current month</p>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={categoryRevenue} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
@@ -124,11 +126,11 @@ export default function AnalyticsPage() {
               <Tooltip formatter={(value) => `₹${Number(value).toLocaleString("en-IN")}`} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="d-flex" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
             {categoryRevenue.map((cat, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                <span className="text-xs text-muted">{cat.name}</span>
+              <div key={i} className="d-flex align-center gap-2" style={{ width: 'calc(50% - 0.5rem)' }}>
+                <span style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: cat.color }} />
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{cat.name}</span>
               </div>
             ))}
           </div>
@@ -136,27 +138,26 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Top buyers + Godown performance */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-          <h3 className="text-lg font-semibold text-brand-800 mb-1">Top Buyers</h3>
-          <p className="text-sm text-muted mb-4">By revenue contribution</p>
-          <div className="space-y-4">
+      <div className="grid-2">
+        <div className="dashboard-card">
+          <h3 className="dashboard-card-title mb-2">Top Buyers</h3>
+          <p className="dashboard-card-subtitle mb-4" style={{ marginBottom: '1rem' }}>By revenue contribution</p>
+          <div className="d-flex" style={{ flexDirection: 'column', gap: '1rem' }}>
             {topBuyers.map((buyer, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <span className="w-6 h-6 bg-brand-100 rounded-full flex items-center justify-center text-xs font-bold text-brand-600">
+              <div key={i} className="d-flex align-center gap-4">
+                <span style={{ width: '1.5rem', height: '1.5rem', backgroundColor: 'var(--color-brand-100)', borderRadius: '9999px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-brand-600)' }}>
                   {i + 1}
                 </span>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-brand-800">{buyer.name}</span>
-                    <span className="text-sm font-semibold text-brand-600">
+                <div style={{ flex: 1 }}>
+                  <div className="d-flex align-center justify-between mb-2" style={{ marginBottom: '0.25rem' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-800)' }}>{buyer.name}</span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-brand-600)' }}>
                       ₹{(buyer.revenue / 1000).toFixed(0)}K
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-brand-100 rounded-full overflow-hidden">
+                  <div style={{ width: '100%', height: '0.375rem', backgroundColor: 'var(--color-brand-100)', borderRadius: '9999px', overflow: 'hidden' }}>
                     <div
-                      className="h-full bg-brand-600 rounded-full"
-                      style={{ width: `${(buyer.revenue / topBuyers[0].revenue) * 100}%` }}
+                      style={{ height: '100%', backgroundColor: 'var(--color-brand-600)', borderRadius: '9999px', width: `${(buyer.revenue / topBuyers[0].revenue) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -165,9 +166,9 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-6">
-          <h3 className="text-lg font-semibold text-brand-800 mb-1">Godown Performance</h3>
-          <p className="text-sm text-muted mb-4">Revenue across warehouses</p>
+        <div className="dashboard-card">
+          <h3 className="dashboard-card-title mb-2">Godown Performance</h3>
+          <p className="dashboard-card-subtitle mb-4" style={{ marginBottom: '1rem' }}>Revenue across warehouses</p>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={godownPerformance}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2CDB0" opacity={0.5} />

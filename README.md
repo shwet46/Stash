@@ -1,49 +1,58 @@
-# Stash — Voice-Native AI Supply Chain Platform
+# 📦 Stash — Voice-Native AI Supply Chain Platform
 
-Stash is a voice-native AI supply chain management platform designed for India's godown (warehouse) operators. It allows users to manage inventory, orders, and suppliers using voice commands in Hindi, English, and Hinglish.
-
----
-
-## 🚀 Quick Start (Docker)
-
-The easiest way to run the entire stack is using Docker Compose.
-
-1.  **Clone the repository** (you are already here).
-2.  **Configure environment variables**:
-    ```bash
-    cp .env.example .env
-    ```
-    *Open `.env` and fill in your API keys (Google AI, Twilio, Telegram).*
-3.  **Start the services**:
-    ```bash
-    docker-compose up --build
-    ```
-4.  **Access the applications**:
-    - **Frontend**: [http://localhost:3000](http://localhost:3000)
-    - **Backend API**: [http://localhost:8000](http://localhost:8000)
-    - **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+Stash is a next-generation supply chain management platform specifically engineered for India's warehouse (godown) operators. By leveraging **Voice-Native AI**, Stash enables operators to manage inventory, streamline orders, and negotiate with suppliers using natural language commands in **Hindi, English, and Hinglish**.
 
 ---
 
-## 🛠️ Manual Setup
+## 🏗️ Architecture Overview
 
-If you prefer to run services manually for development:
+- **Frontend**: Next.js 15 (App Router) with custom CSS and Framer Motion for a premium, responsive UI.
+- **Backend**: Python 3.12 (FastAPI) utilizing `uv` for lightning-fast dependency management.
+- **Database**: PostgreSQL (with PostGIS) for relational data and Firestore for real-time mirrors.
+- **AI Engine**: Google Gemini 1.5 Flash for NLU (Natural Language Understanding) and intent extraction.
+- **Voice Stack**: Google Speech-to-Text v2, Text-to-Speech, and Twilio for cellular integration.
 
-### 1. Prerequisites
-- **Python 3.12+** (with `uv` installed: `pip install uv`)
-- **Node.js 20+**
-- **PostgreSQL 16** with PostGIS extension
-- **Redis 7**
+---
 
-### 2. Backend Setup
+## 🚀 Getting Started
+
+### 1. Clone & Configure
+```bash
+git clone https://github.com/shwet46/Stash.git
+cd Stash
+cp .env.example .env
+```
+> [!IMPORTANT]
+> Open `.env` and fill in your API keys for Google AI, Twilio, and Telegram to enable full functionality.
+
+### 2. Run via Docker (Recommended)
+The easiest way to orchestrate all services including Postgres, Redis, and the AI backend.
+```bash
+docker-compose up --build
+```
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8000](http://localhost:8000)
+- **Interactive Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🛠️ Manual Development Setup
+
+If you prefer to run services natively for faster iteration:
+
+### Prerequisites
+- **Python 3.12+** (Install `uv`: `pip install uv`)
+- **Node.js 20+** (Install `pnpm` or `npm`)
+- **PostgreSQL 16** & **Redis 7**
+
+### Backend Setup
 ```bash
 cd backend
 uv sync
-# Ensure your local Postgres/Redis match the .env settings
 uv run uvicorn app.main:app --reload
 ```
 
-### 3. Frontend Setup
+### Frontend Setup
 ```bash
 cd frontend
 npm install
@@ -52,45 +61,37 @@ npm run dev
 
 ---
 
-## 💾 Database Seeding
+## 💾 Database & Seeding
 
-To populate the database with realistic Indian godown data:
+To populate the system with realistic data (Suppliers, Inventory, Warehouse locations):
 
+**Via Docker:**
 ```bash
-# Using Docker
 docker-compose exec backend uv run python app/db/seed_run.py
+```
 
-# Manual
+**Manual:**
+```bash
 cd backend
 uv run python app/db/seed_run.py
 ```
-
-This seed script writes records to PostgreSQL and mirrors the same datasets to Firestore collections.
-
-For Firestore visibility, set these in `.env`:
-
-```bash
-GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
-FIRESTORE_DATABASE=stash
-```
-
-If credentials are missing, seeding still succeeds for PostgreSQL and logs a Firestore skip warning.
+*Note: This script seeds PostgreSQL and attempts to mirror data to Firestore if credentials are provided.*
 
 ---
 
-## 📞 Testing Voice Features
+## 🎙️ Testing Voice & Telegram
 
-Since voice features rely on Twilio webhooks, you'll need a tunnel (like `ngrok`) to expose your local backend to the internet.
+### Voice Commands
+Voice features require a public endpoint for Twilio webhooks.
+1. Start ngrok: `ngrok http 8000`
+2. Set `BACKEND_URL` in `.env` to your ngrok URL.
+3. Configure Twilio: Point your number's Voice Webhook to `https://<your-url>/api/voice/welcome`.
 
-1.  Start ngrok: `ngrok http 8000`
-2.  Update your Twilio console webhook URL for your number to: `https://your-ngrok-url.ngrok-free.app/api/voice/welcome`
-3.  Call your Twilio number and start talking!
+### Telegram Bot
+1. Provide `TELEGRAM_BOT_TOKEN` in `.env`.
+2. The backend registers the webhook automatically on startup if `BACKEND_URL` is set.
 
 ---
 
-## 📱 Testing Telegram Bot
-
-1.  Set your Telegram Bot Token in `.env`.
-2.  The backend will automatically register the webhook if `BACKEND_URL` is set to your ngrok URL.
-3.  Message your bot on Telegram.
+## ⚖️ License
+Distributed under the MIT License. See `LICENSE` for more information.

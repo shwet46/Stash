@@ -44,16 +44,16 @@ export default function InventoryPage() {
   const lowStockCount = inventoryData.filter((i) => i.status !== "healthy").length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="dashboard-wrapper">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="dashboard-header">
         <div>
-          <h1 className="text-2xl font-bold text-brand-800">Inventory</h1>
-          <p className="text-sm text-muted mt-1">
+          <h1 className="dashboard-title">Inventory</h1>
+          <p className="dashboard-subtitle">
             {inventoryData.length} products across 5 godowns
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="dashboard-header-right">
           <Button variant="outline" size="sm" icon={<Download size={16} />}>
             Export
           </Button>
@@ -65,10 +65,10 @@ export default function InventoryPage() {
 
       {/* Alert banner */}
       {lowStockCount > 0 && (
-        <div className="bg-amber-50 border border-warning/30 rounded-[12px] p-4 flex items-center gap-3">
-          <AlertTriangle size={18} className="text-warning flex-shrink-0" />
-          <p className="text-sm text-brand-800">
-            <span className="font-semibold">{lowStockCount} products</span> are
+        <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '0.75rem', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <AlertTriangle size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-brand-800)' }}>
+            <span style={{ fontWeight: 600 }}>{lowStockCount} products</span> are
             below stock threshold. Auto-reorder has been triggered for critical
             items.
           </p>
@@ -76,8 +76,8 @@ export default function InventoryPage() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[240px] max-w-sm">
+      <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '240px', maxWidth: '24rem' }}>
           <Input
             placeholder="Search products..."
             value={search}
@@ -85,17 +85,23 @@ export default function InventoryPage() {
             icon={<Search size={16} />}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Filter size={16} className="text-muted" />
+        <div className="d-flex align-center gap-2">
+          <Filter size={16} style={{ color: 'var(--color-muted)' }} />
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                categoryFilter === cat
-                  ? "bg-brand-600 text-white"
-                  : "bg-white border border-divider text-brand-700 hover:bg-brand-50"
-              }`}
+              style={{
+                padding: '0.375rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'colors 0.2s',
+                border: categoryFilter === cat ? '1px solid var(--color-brand-600)' : '1px solid var(--color-divider)',
+                backgroundColor: categoryFilter === cat ? 'var(--color-brand-600)' : 'white',
+                color: categoryFilter === cat ? 'white' : 'var(--color-brand-700)'
+              }}
             >
               {cat === "all" ? "All" : cat}
             </button>
@@ -104,53 +110,51 @@ export default function InventoryPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[12px] border border-divider shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
+      <div className="dashboard-table-wrapper">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="dashboard-table">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Stock</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Threshold</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Godown</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Expiry</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Threshold</th>
+                <th>Godown</th>
+                <th>Expiry</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-divider">
+            <tbody>
               {filtered.map((item) => {
                 const statusCfg = statusConfig[item.status];
                 const stockPercent = Math.min((item.stock / item.threshold) * 100, 100);
                 return (
-                  <tr key={item.id} className="hover:bg-brand-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-brand-800">{item.name}</td>
-                    <td className="px-6 py-4">
+                  <tr key={item.id}>
+                    <td style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{item.name}</td>
+                    <td>
                       <Badge variant="outline" size="sm">{item.category}</Badge>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-brand-800">
+                    <td>
+                      <div className="d-flex align-center gap-3">
+                        <span style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>
                           {item.stock.toLocaleString()} {item.unit}
                         </span>
-                        <div className="w-16 h-1.5 bg-brand-100 rounded-full overflow-hidden">
+                        <div style={{ width: '4rem', height: '0.375rem', backgroundColor: 'var(--color-brand-100)', borderRadius: '9999px', overflow: 'hidden' }}>
                           <div
-                            className={`h-full rounded-full ${
-                              item.status === "critical"
-                                ? "bg-error"
-                                : item.status === "low"
-                                ? "bg-warning"
-                                : "bg-success"
-                            }`}
-                            style={{ width: `${stockPercent}%` }}
+                            style={{
+                              height: '100%',
+                              borderRadius: '9999px',
+                              width: `${stockPercent}%`,
+                              backgroundColor: item.status === "critical" ? 'var(--color-error)' : item.status === "low" ? 'var(--color-warning)' : 'var(--color-success)'
+                            }}
                           />
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-muted">{item.threshold} {item.unit}</td>
-                    <td className="px-6 py-4 text-brand-700">{item.godown}</td>
-                    <td className="px-6 py-4 text-muted">{item.expiry}</td>
-                    <td className="px-6 py-4">
+                    <td style={{ color: 'var(--color-muted)' }}>{item.threshold} {item.unit}</td>
+                    <td style={{ color: 'var(--color-brand-700)' }}>{item.godown}</td>
+                    <td style={{ color: 'var(--color-muted)' }}>{item.expiry}</td>
+                    <td>
                       <Badge variant={statusCfg.variant} dot size="sm">
                         {statusCfg.label}
                       </Badge>

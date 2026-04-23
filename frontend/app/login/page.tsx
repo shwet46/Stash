@@ -1,99 +1,188 @@
 "use client";
+
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { LuWarehouse as Warehouse, LuArrowRight as ArrowRight } from "react-icons/lu";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  LuWarehouse as Warehouse, 
+  LuArrowRight as ArrowRight, 
+  LuPhone as PhoneIcon, 
+  LuLock as LockIcon, 
+  LuEye as EyeIcon, 
+  LuEyeOff as EyeOffIcon,
+  LuTriangleAlert as AlertIcon
+} from "react-icons/lu";
 import Button from "@/components/ui/Button";
 import Link from "next/link";
 
 export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const res = await signIn("credentials", {
-      phone,
-      password,
-      redirect: false,
-    });
-    if (res?.error) {
-      setError("Invalid phone number or password");
-    } else {
-      router.push("/dashboard");
+    if (phone.length < 3 || password.length < 4) {
+      setError("Please check your credentials.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        phone,
+        password,
+        redirect: false,
+      });
+      if (res?.error) {
+        setError("Invalid credentials. Please try again.");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-wrapper">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="auth-card"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
-          <div style={{ width: '3rem', height: '3rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-            <Warehouse size={24} style={{ color: 'white' }} />
+    <div className="auth-split-wrapper">
+      
+      {/* LEFT SIDE: Brand & Value Prop */}
+      <section className="auth-split-left">
+        <div className="auth-left-content">
+          <div className="auth-brand">
+            <div className="auth-brand-icon">
+              <Warehouse size={32} />
+            </div>
+            <span className="auth-brand-text">STASH</span>
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)' }}>
-            Welcome to <span className="notranslate" translate="no">Stash</span>
+
+          <h1 className="auth-hero-title">
+            The OS for <br />
+            <span className="text-gradient">
+              India&apos;s Godowns.
+            </span>
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', marginTop: '0.5rem', textAlign: 'center' }}>
-            Sign in to manage your godown operations
-          </p>
-        </div>
-
-        {error && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--color-error)', fontSize: '0.875rem', borderRadius: '0.5rem', textAlign: 'center' }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="form-group">
-            <label className="form-label">
-              Phone Number or Username
-            </label>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="form-input"
-              placeholder="e.g. admin or user"
-              required
-            />
-          </div>
           
-          <div className="form-group">
-            <label className="form-label">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-input"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <Button type="submit" style={{ width: '100%', justifyContent: 'center' }} size="lg">
-            Sign In <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
-          </Button>
-        </form>
-
-        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-divider)', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>
-            Don't have an account? <Link href="/signup" style={{ color: 'var(--color-brand-600)', fontWeight: 600 }}>Create Account</Link>
+          <p className="auth-hero-subtitle">
+            Streamline inventory, manage suppliers, and automate your supply chain with our voice-first AI platform.
           </p>
+
+          <div className="auth-stats-grid">
+            <div>
+              <p className="auth-stat-value">500+</p>
+              <p className="auth-stat-label">Warehouses</p>
+            </div>
+            <div>
+              <p className="auth-stat-value">99.9%</p>
+              <p className="auth-stat-label">Uptime</p>
+            </div>
+          </div>
         </div>
-      </motion.div>
+      </section>
+
+      {/* RIGHT SIDE: Login Form */}
+      <main className="auth-split-right">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="auth-form-container"
+        >
+          <header className="auth-form-header">
+            <h2 className="auth-form-title">Welcome Back</h2>
+            <p className="auth-form-subtitle">Please enter your details to sign in.</p>
+          </header>
+
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="alert-box"
+              >
+                <AlertIcon size={18} />
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <form onSubmit={handleLogin}>
+            <div className="input-group">
+              <label className="input-label">
+                Username or Phone
+              </label>
+              <div className="input-wrapper">
+                <div className="input-icon">
+                  <PhoneIcon size={16} />
+                </div>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter your ID"
+                  className="input-field"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <div className="input-label-wrapper">
+                <label className="input-label">
+                  Password
+                </label>
+                <Link href="/forgot" className="input-link">
+                  Forgot Password?
+                </Link>
+              </div>
+              <div className="input-wrapper">
+                <div className="input-icon">
+                  <LockIcon size={16} />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="input-field has-right-icon"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="input-right-icon"
+                >
+                  {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="auth-submit-btn"
+            >
+              {loading ? "Verifying..." : "Sign In"}
+              {!loading && <ArrowRight size={20} />}
+            </button>
+          </form>
+
+          <footer className="auth-footer">
+            New to Stash? 
+            <Link href="/signup" className="auth-footer-link">
+              Create an account
+            </Link>
+          </footer>
+        </motion.div>
+      </main>
     </div>
   );
 }

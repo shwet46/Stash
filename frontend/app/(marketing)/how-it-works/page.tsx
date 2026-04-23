@@ -1,12 +1,9 @@
+"use client";
 import type { Metadata } from "next";
 import HowItWorksSection from "@/components/marketing/HowItWorksSection";
 import CTASection from "@/components/marketing/CTASection";
-
-export const metadata: Metadata = {
-  title: "How It Works — Stash",
-  description:
-    "See how Stash transforms godown operations with voice-first AI. Four simple steps from phone call to automated action.",
-};
+import { motion } from "framer-motion";
+import { LuMic as Mic, LuTerminal as Terminal } from 'react-icons/lu';
 
 const voiceExamples = [
   {
@@ -19,84 +16,97 @@ const voiceExamples = [
     transcript: '"Ramesh bhai ka order kya status hai?"',
     language: "Hindi",
     intent: "Order Status",
-    action:
-      "Found order #STH-4821 for Ramesh: 200 kg Rice, dispatched, ETA tomorrow",
+    action: "Order #STH-4821 for Ramesh: 200 kg Rice, dispatched, ETA tomorrow",
   },
   {
     transcript: '"Sugar ka stock kitna bacha hai?"',
     language: "Hinglish",
     intent: "Stock Query",
-    action:
-      "Current stock: Sugar 45 kg (below threshold 100 kg). Auto-reorder triggered.",
+    action: "Current stock: Sugar 45 kg (below threshold 100 kg). Auto-reorder triggered.",
   },
   {
-    transcript: '"Place order for 1000 kg wheat flour from primary supplier"',
+    transcript: '"Place order for 1000 kg wheat flour"',
     language: "English",
     intent: "Order Placed",
-    action:
-      "Order created. Calling Supplier: Anand Trading Co. Estimated delivery: 5 days.",
+    action: "Order created. Calling Supplier: Anand Trading Co.",
   },
 ];
 
 export default function HowItWorksPage() {
   return (
     <>
-      <section className="pt-28 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block px-4 py-1.5 bg-cream text-brand-600 text-sm font-medium rounded-full mb-4">
-              How It Works
+      <section className="section bg-gradient-mesh" style={{ paddingTop: '8rem' }}>
+        <div className="container">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+            style={{ marginBottom: '5rem' }}
+          >
+            <span className="section-badge glass-dark">
+              The Process
             </span>
-            <h1 className="text-4xl sm:text-5xl font-bold text-brand-800">
+            <h1 className="hero-title text-gradient" style={{ marginTop: '1rem', maxWidth: '48rem', margin: '1rem auto' }}>
               From Voice to Action in Seconds
             </h1>
-            <p className="mt-4 text-lg text-muted max-w-2xl mx-auto">
-              See how a simple phone call powers an entire supply chain
-              operation.
+            <p className="hero-desc" style={{ maxWidth: '32rem', margin: '0 auto' }}>
+              See how a simple phone call powers an entire supply chain operation.
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <HowItWorksSection />
 
       {/* Voice Examples */}
-      <section className="py-20 bg-surface">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-brand-800">
-              Voice Command Examples
-            </h2>
-            <p className="mt-4 text-muted max-w-xl mx-auto">
-              Real examples of how operators interact with Stash using natural
-              voice commands.
+      <section className="section bg-white">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Voice Command Examples</h2>
+            <p className="section-desc">
+              Real examples of how operators interact with Stash using natural voice commands.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid-2">
             {voiceExamples.map((ex, i) => (
-              <div
+              <motion.div
                 key={i}
-                className="bg-white rounded-[12px] border border-divider shadow-card p-6"
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="feature-card glass"
+                style={{ padding: '2rem' }}
               >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="px-2 py-0.5 bg-cream text-brand-600 text-xs font-medium rounded-full">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.625rem', borderRadius: '1rem', backgroundColor: 'var(--color-brand-100)', color: 'var(--color-brand-700)', textTransform: 'uppercase' }}>
                     {ex.language}
                   </span>
-                  <span className="px-2 py-0.5 bg-brand-50 text-brand-500 text-xs font-medium rounded-full">
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.25rem 0.625rem', borderRadius: '1rem', backgroundColor: 'var(--color-brand-50)', color: 'var(--color-brand-500)', textTransform: 'uppercase' }}>
                     {ex.intent}
                   </span>
                 </div>
-                <p className="text-brand-800 font-medium italic mb-4">
-                  {ex.transcript}
-                </p>
-                <div className="flex items-start gap-2 bg-green-50 rounded-[8px] p-3">
-                  <span className="text-success font-bold text-sm mt-0.5">
-                    →
-                  </span>
-                  <p className="text-sm text-success">{ex.action}</p>
+                
+                <div style={{ display: 'flex', alignItems: 'start', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', backgroundColor: 'var(--color-brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Mic size={18} style={{ color: 'white' }} />
+                  </div>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-brand-900)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                    {ex.transcript}
+                  </p>
                 </div>
-              </div>
+
+                <div style={{ display: 'flex', alignItems: 'start', gap: '1rem', backgroundColor: 'var(--color-brand-50)', padding: '1.25rem', borderRadius: '1rem', border: '1px solid var(--color-brand-100)' }}>
+                  <div style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Terminal size={14} style={{ color: 'var(--color-brand-600)' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-brand-700)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>System Action</p>
+                    <p style={{ fontSize: '0.9375rem', color: 'var(--color-brand-800)', fontWeight: 500 }}>{ex.action}</p>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>

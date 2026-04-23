@@ -10,27 +10,27 @@ interface AlertCardProps {
 const config = {
   warning: {
     icon: AlertTriangle,
-    bg: "bg-amber-50",
-    border: "border-warning",
-    iconColor: "text-warning",
+    bg: "rgba(245, 158, 11, 0.05)",
+    border: "var(--color-warning)",
+    iconColor: "var(--color-warning)",
   },
   error: {
     icon: AlertTriangle,
-    bg: "bg-red-50",
-    border: "border-error",
-    iconColor: "text-error",
+    bg: "rgba(239, 68, 68, 0.05)",
+    border: "var(--color-error)",
+    iconColor: "var(--color-error)",
   },
   info: {
     icon: Info,
-    bg: "bg-blue-50",
-    border: "border-blue-400",
-    iconColor: "text-blue-500",
+    bg: "rgba(59, 130, 246, 0.05)",
+    border: "#3B82F6",
+    iconColor: "#3B82F6",
   },
   success: {
     icon: CheckCircle,
-    bg: "bg-green-50",
-    border: "border-success",
-    iconColor: "text-success",
+    bg: "rgba(16, 185, 129, 0.05)",
+    border: "var(--color-success)",
+    iconColor: "var(--color-success)",
   },
 };
 
@@ -39,14 +39,14 @@ export default function AlertCard({ type, title, message, time }: AlertCardProps
 
   return (
     <div
-      className={`${bg} rounded-[12px] border-l-4 ${border} p-4 flex items-start gap-3`}
+      style={{ backgroundColor: bg, borderLeft: `4px solid ${border}`, borderRadius: '0.5rem', padding: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.75rem' }}
     >
-      <Icon size={18} className={`${iconColor} mt-0.5 flex-shrink-0`} />
-      <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-semibold text-brand-800">{title}</h4>
-        <p className="text-xs text-muted mt-0.5">{message}</p>
+      <Icon size={18} style={{ color: iconColor, marginTop: '0.125rem', flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>{title}</h4>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', marginTop: '0.125rem' }}>{message}</p>
       </div>
-      {time && <span className="text-xs text-muted flex-shrink-0">{time}</span>}
+      {time && <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)', flexShrink: 0 }}>{time}</span>}
     </div>
   );
 }

@@ -1,89 +1,94 @@
+"use client";
 import type { Metadata } from "next";
 import TechStackSection from "@/components/marketing/TechStackSection";
 import CTASection from "@/components/marketing/CTASection";
-
-export const metadata: Metadata = {
-  title: "Tech Stack — Stash",
-  description:
-    "Built on Google Cloud, Gemini AI, FastAPI, and Next.js. Enterprise-grade infrastructure for India's supply chain.",
-};
+import { motion } from "framer-motion";
 
 const architecture = [
   {
     layer: "Presentation Layer",
-    description: "Next.js 14 with App Router, server and client components, Tailwind CSS, Recharts for data viz.",
-    color: "#6B4226",
+    description: "Next.js 14 with App Router, Custom CSS Design Tokens, Framer Motion, and Recharts.",
+    color: "var(--color-brand-600)",
   },
   {
     layer: "API Layer",
-    description: "FastAPI with async endpoints, NextAuth.js for authentication, RBAC middleware for route protection.",
-    color: "#8B5E3C",
+    description: "FastAPI with async endpoints, NextAuth.js for authentication, and JWT-based security.",
+    color: "var(--color-brand-500)",
   },
   {
     layer: "AI / ML Layer",
-    description: "Gemini 3.0 Flash for NLP, Prophet for demand forecasting, XGBoost for disruption classification.",
-    color: "#D4956A",
+    description: "Gemini 3.0 Flash for NLP, Prophet for demand forecasting, and XGBoost for risk classification.",
+    color: "var(--color-brand-700)",
   },
   {
     layer: "Communication Layer",
-    description: "Twilio Voice for calls, Telegram Bot API for notifications, gTTS for voice responses.",
-    color: "#6B4226",
+    description: "Twilio Voice for telephony, Telegram Bot API for alerts, and Google Cloud TTS for responses.",
+    color: "var(--color-brand-800)",
   },
   {
     layer: "Data Layer",
-    description: "PostgreSQL 16 with PostGIS, Redis for caching, BigQuery for analytics, Firebase Storage for files.",
-    color: "#8B5E3C",
+    description: "PostgreSQL 16 with PostGIS, Redis for caching, and BigQuery for analytical processing.",
+    color: "var(--color-brand-600)",
   },
   {
     layer: "Infrastructure Layer",
-    description: "Google Cloud Run, Firebase Hosting, Cloud Pub/Sub, Docker, GitHub Actions CI/CD.",
-    color: "#D4956A",
+    description: "Google Cloud Run, Firebase Hosting, Cloud Pub/Sub, and GitHub Actions CI/CD.",
+    color: "var(--color-brand-500)",
   },
 ];
 
 export default function TechStackPage() {
   return (
     <>
-      <section className="pt-28 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block px-4 py-1.5 bg-cream text-brand-600 text-sm font-medium rounded-full mb-4">
-              Technology
+      <section className="section bg-gradient-mesh" style={{ paddingTop: '8rem' }}>
+        <div className="container">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+            style={{ marginBottom: '5rem' }}
+          >
+            <span className="section-badge glass-dark">
+              Architecture
             </span>
-            <h1 className="text-4xl sm:text-5xl font-bold text-brand-800">
+            <h1 className="hero-title text-gradient" style={{ marginTop: '1rem', maxWidth: '48rem', margin: '1rem auto' }}>
               Enterprise-Grade Tech Stack
             </h1>
-            <p className="mt-4 text-lg text-muted max-w-2xl mx-auto">
-              Built entirely on Google Cloud with open-source foundations for
-              maximum reliability and scalability.
+            <p className="hero-desc" style={{ maxWidth: '32rem', margin: '0 auto' }}>
+              Built on Google Cloud with open-source foundations for maximum reliability.
             </p>
-          </div>
+          </motion.div>
 
           {/* Architecture layers */}
-          <div className="max-w-3xl mx-auto space-y-4 mb-20">
-            <h2 className="text-2xl font-bold text-brand-800 text-center mb-8">
+          <div style={{ maxWidth: '42rem', margin: '0 auto 6rem auto' }}>
+            <h2 className="section-title" style={{ fontSize: '1.75rem', marginBottom: '3rem' }}>
               System Architecture
             </h2>
-            {architecture.map((layer, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-[12px] border border-divider shadow-card p-5 flex items-center gap-4"
-                style={{ borderLeftWidth: "4px", borderLeftColor: layer.color }}
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
-                  style={{ backgroundColor: layer.color }}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {architecture.map((layer, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="glass"
+                  style={{ padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid white', display: 'flex', alignItems: 'center', gap: '1.5rem', borderLeft: `6px solid ${layer.color}` }}
                 >
-                  {i + 1}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-brand-800">
-                    {layer.layer}
-                  </h3>
-                  <p className="text-sm text-muted">{layer.description}</p>
-                </div>
-              </div>
-            ))}
+                  <div
+                    style={{ width: '3rem', height: '3rem', borderRadius: '0.75rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: layer.color, color: 'white', fontWeight: 800, fontSize: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  >
+                    {i + 1}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-brand-900)', marginBottom: '0.25rem' }}>
+                      {layer.layer}
+                    </h3>
+                    <p style={{ fontSize: '0.9375rem', color: 'var(--color-muted)', lineHeight: 1.5 }}>{layer.description}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

@@ -39,42 +39,44 @@ export default function BillingPage() {
   const totalPending = billsData.filter(b => b.status !== "paid").reduce((s, b) => s + b.total, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="dashboard-wrapper">
+      <div className="dashboard-header">
         <div>
-          <h1 className="text-2xl font-bold text-brand-800">Billing</h1>
-          <p className="text-sm text-muted mt-1">GST invoices and payment tracking</p>
+          <h1 className="dashboard-title">Billing</h1>
+          <p className="dashboard-subtitle">GST invoices and payment tracking</p>
         </div>
-        <Button variant="outline" size="sm" icon={<Download size={16} />}>
-          Export All
-        </Button>
+        <div className="dashboard-header-right">
+          <Button variant="outline" size="sm" icon={<Download size={16} />}>
+            Export All
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-5">
-          <p className="text-sm text-muted">Total Revenue</p>
-          <p className="text-2xl font-bold text-brand-800 mt-1">
+      <div className="grid-3">
+        <div className="dashboard-card">
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>Total Revenue</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-800)', marginTop: '0.25rem' }}>
             ₹{totalRevenue.toLocaleString("en-IN")}
           </p>
         </div>
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-5">
-          <p className="text-sm text-muted">Collected</p>
-          <p className="text-2xl font-bold text-success mt-1">
+        <div className="dashboard-card">
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>Collected</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '0.25rem' }}>
             ₹{totalPaid.toLocaleString("en-IN")}
           </p>
         </div>
-        <div className="bg-white rounded-[12px] border border-divider shadow-card p-5">
-          <p className="text-sm text-muted">Outstanding</p>
-          <p className="text-2xl font-bold text-error mt-1">
+        <div className="dashboard-card">
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>Outstanding</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-error)', marginTop: '0.25rem' }}>
             ₹{totalPending.toLocaleString("en-IN")}
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[240px] max-w-sm">
+      <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '240px', maxWidth: '24rem' }}>
           <Input
             placeholder="Search invoices..."
             value={search}
@@ -82,16 +84,22 @@ export default function BillingPage() {
             icon={<Search size={16} />}
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="d-flex align-center gap-2">
           {["all", "paid", "pending", "overdue"].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                statusFilter === s
-                  ? "bg-brand-600 text-white"
-                  : "bg-white border border-divider text-brand-700 hover:bg-brand-50"
-              }`}
+              style={{
+                padding: '0.375rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'colors 0.2s',
+                border: statusFilter === s ? '1px solid var(--color-brand-600)' : '1px solid var(--color-divider)',
+                backgroundColor: statusFilter === s ? 'var(--color-brand-600)' : 'white',
+                color: statusFilter === s ? 'white' : 'var(--color-brand-700)'
+              }}
             >
               {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
@@ -100,49 +108,49 @@ export default function BillingPage() {
       </div>
 
       {/* Bills table */}
-      <div className="bg-white rounded-[12px] border border-divider shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
+      <div className="dashboard-table-wrapper">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="dashboard-table">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Invoice</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Order</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Buyer</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">GST</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Actions</th>
+                <th>Invoice</th>
+                <th>Order</th>
+                <th>Buyer</th>
+                <th>Amount</th>
+                <th>GST</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-divider">
+            <tbody>
               {filtered.map((bill) => {
                 const statusCfg = statusConfig[bill.status];
                 return (
-                  <tr key={bill.id} className="hover:bg-brand-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-brand-600">{bill.id}</td>
-                    <td className="px-6 py-4 text-muted">{bill.orderRef}</td>
-                    <td className="px-6 py-4 font-medium text-brand-800">{bill.buyer}</td>
-                    <td className="px-6 py-4 text-brand-700">₹{bill.amount.toLocaleString("en-IN")}</td>
-                    <td className="px-6 py-4 text-muted">
+                  <tr key={bill.id}>
+                    <td style={{ fontWeight: 500, color: 'var(--color-brand-600)' }}>{bill.id}</td>
+                    <td style={{ color: 'var(--color-muted)' }}>{bill.orderRef}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--color-brand-800)' }}>{bill.buyer}</td>
+                    <td style={{ color: 'var(--color-brand-700)' }}>₹{bill.amount.toLocaleString("en-IN")}</td>
+                    <td style={{ color: 'var(--color-muted)' }}>
                       {bill.gstRate}% (₹{bill.gstAmount.toLocaleString("en-IN")})
                     </td>
-                    <td className="px-6 py-4 font-semibold text-brand-800">
+                    <td style={{ fontWeight: 600, color: 'var(--color-brand-800)' }}>
                       ₹{bill.total.toLocaleString("en-IN")}
                     </td>
-                    <td className="px-6 py-4">
+                    <td>
                       <Badge variant={statusCfg.variant} dot size="sm">{statusCfg.label}</Badge>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1">
-                        <button className="p-1.5 rounded-lg hover:bg-brand-50 text-muted hover:text-brand-600 transition-colors cursor-pointer" title="View Invoice">
+                    <td>
+                      <div className="d-flex align-center gap-2">
+                        <button style={{ padding: '0.375rem', borderRadius: '0.5rem', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer' }} title="View Invoice">
                           <Eye size={16} />
                         </button>
-                        <button className="p-1.5 rounded-lg hover:bg-brand-50 text-muted hover:text-brand-600 transition-colors cursor-pointer" title="Download PDF">
+                        <button style={{ padding: '0.375rem', borderRadius: '0.5rem', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer' }} title="Download PDF">
                           <FileText size={16} />
                         </button>
                         {bill.status !== "paid" && (
-                          <button className="p-1.5 rounded-lg hover:bg-brand-50 text-muted hover:text-brand-600 transition-colors cursor-pointer" title="Send Reminder">
+                          <button style={{ padding: '0.375rem', borderRadius: '0.5rem', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer' }} title="Send Reminder">
                             <Send size={16} />
                           </button>
                         )}
