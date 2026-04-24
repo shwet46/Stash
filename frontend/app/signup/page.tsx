@@ -195,8 +195,7 @@ export default function SignupPage() {
                   onChange={(e) => setRole(e.target.value)}
                   className="input-field form-select"
                 >
-                  <option value="ADMIN">Godown Owner (Admin)</option>
-                  <option value="OPERATOR">Godown Operator</option>
+                  <option value="ADMIN">Godown Owner / Admin</option>
                   <option value="WORKER">Worker</option>
                 </select>
               </div>

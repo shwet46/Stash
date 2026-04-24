@@ -3,20 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { 
-  fetchOwnerDashboard, 
-  fetchOperatorDashboard, 
+  fetchAdminDashboard, 
   fetchWorkerDashboard,
   subscribeToDashboard,
   DashboardRole,
-  OwnerDashboardData,
-  OperatorDashboardData,
+  AdminDashboardData,
   WorkerDashboardData
 } from "@/lib/api";
 
 type DashboardDataMap = {
-  owner: OwnerDashboardData;
-  admin: OwnerDashboardData;
-  operator: OperatorDashboardData;
+  admin: AdminDashboardData;
   worker: WorkerDashboardData;
 };
 
@@ -31,10 +27,10 @@ export function useDashboardData<T extends keyof DashboardDataMap>(role: T) {
     try {
       setLoading(true);
       let result;
-      if (role === "owner" || role === "admin") {
-        result = await fetchOwnerDashboard();
-      } else if (role === "operator") {
-        result = await fetchOperatorDashboard();
+      // Handle admin/owner interchangeably
+      const normalizedRole = (role as string).toLowerCase();
+      if (normalizedRole === "admin" || normalizedRole === "owner") {
+        result = await fetchAdminDashboard();
       } else {
         result = await fetchWorkerDashboard();
       }
@@ -53,9 +49,9 @@ export function useDashboardData<T extends keyof DashboardDataMap>(role: T) {
       fetchData();
 
       // Subscribe to real-time updates via SSE
-      const normalizedRole = (role === "admin" ? "owner" : role) as DashboardRole;
+      const normalizedRole = (role as string).toLowerCase() === "admin" || (role as string).toLowerCase() === "owner" ? "admin" : "worker";
       const unsubscribe = subscribeToDashboard<DashboardDataMap[T]>(
-        normalizedRole,
+        normalizedRole as DashboardRole,
         (newData) => {
           setData(newData);
           setIsRealtime(true);

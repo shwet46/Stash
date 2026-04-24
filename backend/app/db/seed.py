@@ -15,7 +15,7 @@ def generate_seed_data():
             "name": "Shweta Behera",
             "email": "shweta@stash.ai",
             "phone": "+919999999999",
-            "role": "owner",
+            "role": "admin",
         },
         {
             "id": str(uuid.uuid4()),
@@ -29,6 +29,27 @@ def generate_seed_data():
             "name": "Priya Sharma",
             "email": "priya@stash.ai",
             "phone": "+917777777777",
+            "role": "worker",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Amit Patel",
+            "email": "amit@stash.ai",
+            "phone": "+916666666666",
+            "role": "worker",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Suresh Raina",
+            "email": "suresh@stash.ai",
+            "phone": "+915555555555",
+            "role": "worker",
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Vikram Singh",
+            "email": "vikram@stash.ai",
+            "phone": "+914444444444",
             "role": "worker",
         },
     ]
@@ -154,22 +175,28 @@ def generate_seed_data():
             "last_contacted": (datetime.utcnow() - timedelta(hours=random.randint(1, 120))).isoformat(),
         })
 
-    # ========== ORDERS (50) ==========
-    statuses = (["delivered"] * 30 + ["dispatched"] * 13 + ["pending"] * 7)
+    # ========== ORDERS (80) ==========
+    statuses = (["delivered"] * 50 + ["dispatched"] * 20 + ["pending"] * 10)
     random.shuffle(statuses)
     orders = []
-    for i in range(50):
+    for i in range(80):
         buyer = random.choice(buyers)
         product = random.choice(inventory)
         qty = random.randint(50, 1000)
         unit_price = random.uniform(30, 200)
         total = round(qty * unit_price, 2)
-        created = datetime.utcnow() - timedelta(days=random.randint(0, 30))
+        
+        # Bias towards last 10 days for better charts
+        if random.random() > 0.4:
+            created = datetime.utcnow() - timedelta(days=random.randint(0, 7))
+        else:
+            created = datetime.utcnow() - timedelta(days=random.randint(8, 30))
+            
         delivery = created + timedelta(days=random.randint(3, 7))
 
         orders.append({
             "id": str(uuid.uuid4()),
-            "order_ref": f"STH-{4800 + i}",
+            "order_ref": f"STH-{5200 + i}",
             "buyer_id": buyer["id"],
             "product_id": product["id"],
             "quantity": qty,

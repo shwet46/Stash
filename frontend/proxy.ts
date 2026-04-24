@@ -5,18 +5,19 @@ const ownerOnlyRoutes = [
   "/dashboard/analytics",
   "/dashboard/billing",
   "/dashboard/suppliers",
+  "/dashboard/orders",
 ];
 
 export default withAuth(
   function proxy(req) {
     const { pathname } = req.nextUrl;
-    const userRole = req.nextauth.token?.role;
+    const userRole = req.nextauth.token?.role?.toString().toUpperCase();
 
     const isOwnerRoute = ownerOnlyRoutes.some((route) =>
       pathname.startsWith(route)
     );
 
-    if (isOwnerRoute && userRole !== "ADMIN") {
+    if (isOwnerRoute && userRole !== "ADMIN" && userRole !== "OWNER") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   },

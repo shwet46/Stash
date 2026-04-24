@@ -46,10 +46,12 @@ export default function CTASection() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'center' }}>
               <Button
                 size="lg"
+                variant="secondary"
                 style={{ 
-                  backgroundColor: 'white', 
-                  color: 'var(--color-brand-800)', 
-                  boxShadow: '0 12px 24px rgba(0,0,0,0.15)'
+                  backgroundColor: '#FFFFFF', 
+                  color: 'var(--color-brand-900)', 
+                  fontWeight: 800,
+                  boxShadow: '0 12px 30px rgba(0,0,0,0.2)'
                 }}
                 icon={<ArrowRight size={20} />}
                 onClick={() => window.location.href = '/dashboard'}

@@ -47,11 +47,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function OwnerDashboard() {
+export default function AdminDashboard() {
   const { data: session } = useSession();
-  const { data, loading, error, isRealtime } = useDashboardData("owner");
+  const { data, loading, error, isRealtime } = useDashboardData("admin");
   const [greeting, setGreeting] = useState("");
-  const userName = (session?.user as any)?.name || "Owner";
+  const userName = (session?.user as any)?.name || "Admin";
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -97,7 +97,7 @@ export default function OwnerDashboard() {
         <div>
           <div className="owner-role-badge">
             <Building2 size={12} />
-            <span>Owner Dashboard</span>
+            <span>Admin Dashboard</span>
             {isRealtime && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', color: 'var(--color-success)', fontSize: '10px' }}>
                 <RefreshCw size={10} className="spin" /> REAL-TIME
@@ -165,16 +165,11 @@ export default function OwnerDashboard() {
           <div className="dashboard-card-header">
             <div>
               <h3 className="dashboard-card-title">Real-time Activity</h3>
-              <p className="dashboard-card-subtitle">Live orders and revenue stream</p>
+              <p className="dashboard-card-subtitle">Last 7 days revenue and orders</p>
             </div>
           </div>
-          {/* Using placeholder chart data with real values injected where possible */}
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={[
-              { month: "Today", revenue: stats?.monthly_revenue || 0, orders: stats?.active_orders || 0 },
-              { month: "Yesterday", revenue: (stats?.monthly_revenue || 0) * 0.9, orders: (stats?.active_orders || 0) * 0.8 },
-              // In a real app, this would be an array of historic data
-            ]}>
+            <AreaChart data={data?.revenue_history || []}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#6B4226" stopOpacity={0.15} />
@@ -182,15 +177,51 @@ export default function OwnerDashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2CDB0" opacity={0.4} />
-              <XAxis dataKey="month" stroke="#9A7B5A" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#9A7B5A" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis dataKey="date" stroke="#9A7B5A" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="#9A7B5A" fontSize={10} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="revenue" stroke="#6B4226" strokeWidth={2.5} fill="url(#revGrad)" name="revenue" />
+              <Area type="monotone" dataKey="revenue" stroke="#6B4226" strokeWidth={2.5} fill="url(#revGrad)" name="Revenue" />
+              <Area type="monotone" dataKey="orders" stroke="#D4956A" strokeWidth={1} fill="transparent" name="Orders" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         <div className="dashboard-card">
+          <h3 className="dashboard-card-title mb-2">Inventory Breakdown</h3>
+          <p className="dashboard-card-subtitle" style={{ marginBottom: "1rem" }}>Value by Category</p>
+          <div style={{ height: '180px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data?.category_distribution || []}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={70}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {(data?.category_distribution || []).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={["#6B4226", "#8B5E3C", "#D4956A", "#E2CDB0", "#9A7B5A"][index % 5]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+             {data?.category_distribution?.map((cat, i) => (
+               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ["#6B4226", "#8B5E3C", "#D4956A", "#E2CDB0", "#9A7B5A"][i % 5] }}></div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>{cat.name}</span>
+               </div>
+             ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-3" style={{ marginTop: '1.5rem' }}>
+        <div className="dashboard-card" style={{ gridColumn: "span 1" }}>
           <h3 className="dashboard-card-title mb-2">Low Stock Items</h3>
           <p className="dashboard-card-subtitle" style={{ marginBottom: "1rem" }}>Action required immediately</p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -211,6 +242,24 @@ export default function OwnerDashboard() {
                 All stock healthy
               </p>
             )}
+          </div>
+        </div>
+        
+        <div className="dashboard-card" style={{ gridColumn: "span 2" }}>
+          <h3 className="dashboard-card-title mb-2">Team Overview</h3>
+          <p className="dashboard-card-subtitle" style={{ marginBottom: "1rem" }}>Godown staff and workers</p>
+          <div className="grid-2" style={{ gap: '1rem' }}>
+            {data?.staff?.slice(0, 4).map((member, i) => (
+              <div key={i} className="d-flex align-center gap-3 p-3" style={{ backgroundColor: 'var(--color-brand-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-brand-100)' }}>
+                <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--color-brand-600)', border: '1px solid var(--color-brand-200)' }}>
+                  {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-brand-800)', margin: 0 }}>{member.name}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', margin: 0 }}>{member.role.charAt(0).toUpperCase() + member.role.slice(1)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -135,14 +135,10 @@ export async function fetchDeliveries() {
 // ─────────────────────────────────────────
 // Role-Specific Dashboard Data (PostgreSQL + Firestore)
 // ─────────────────────────────────────────
-export type DashboardRole = "owner" | "operator" | "worker";
+export type DashboardRole = "admin" | "worker";
 
-export async function fetchOwnerDashboard() {
-  return apiFetch<OwnerDashboardData>("/api/dashboard/owner");
-}
-
-export async function fetchOperatorDashboard() {
-  return apiFetch<OperatorDashboardData>("/api/dashboard/operator");
+export async function fetchAdminDashboard() {
+  return apiFetch<AdminDashboardData>("/api/dashboard/admin");
 }
 
 export async function fetchWorkerDashboard() {
@@ -156,7 +152,7 @@ export async function fetchDashboardSummary() {
 // ─────────────────────────────────────────
 // TypeScript interfaces for dashboard data
 // ─────────────────────────────────────────
-export interface OwnerStats {
+export interface AdminStats {
   monthly_revenue: number;
   active_orders: number;
   total_orders: number;
@@ -171,7 +167,6 @@ export interface OwnerStats {
   deliveries_in_transit: number;
   voice_calls_today: number;
   staff_count: number;
-  operator_count: number;
   worker_count: number;
 }
 
@@ -210,9 +205,11 @@ export interface StaffMember {
   phone: string;
 }
 
-export interface OwnerDashboardData {
-  role: "owner";
-  stats: OwnerStats;
+export interface AdminDashboardData {
+  role: "admin";
+  stats: AdminStats;
+  revenue_history: { date: string; revenue: number; orders: number }[];
+  category_distribution: { name: string; value: number; count: number }[];
   low_stock_items: StockItem[];
   recent_orders: RecentOrder[];
   recent_bills: RecentBill[];
@@ -220,15 +217,8 @@ export interface OwnerDashboardData {
   last_updated: string;
 }
 
-export interface OperatorStats {
-  pending_orders: number;
-  today_orders: number;
-  total_active_orders: number;
-  critical_stock: number;
-  low_stock: number;
-  active_deliveries: number;
-  total_products: number;
-}
+
+
 
 export interface DeliveryItem {
   id: string;
@@ -236,16 +226,6 @@ export interface DeliveryItem {
   status: string;
   note: string | null;
   updated_at: string;
-}
-
-export interface OperatorDashboardData {
-  role: "operator";
-  stats: OperatorStats;
-  pending_orders: RecentOrder[];
-  alert_stock: StockItem[];
-  active_deliveries: DeliveryItem[];
-  inventory_summary: StockItem[];
-  last_updated: string;
 }
 
 export interface WorkerTask {
@@ -265,12 +245,14 @@ export interface WorkerStats {
   pending_tasks: number;
   voice_commands_today: number;
   active_deliveries: number;
+  low_stock_count: number;
 }
 
 export interface WorkerDashboardData {
   role: "worker";
   stats: WorkerStats;
   tasks: WorkerTask[];
+  recent_calls: { id: string; text: string; time: string; status: string }[];
   active_deliveries: DeliveryItem[];
   last_updated: string;
 }

@@ -23,22 +23,21 @@ import {
   LuSparkles as Sparkles,
 } from "react-icons/lu";
 
-type UserRole = "owner" | "admin" | "operator" | "worker";
+type UserRole = "admin" | "worker";
 
-const menuItems: { icon: any; label: string; href: string; roles: UserRole[] }[] = [
-  { icon: LayoutDashboard, label: "Overview", href: "/dashboard", roles: ["owner", "admin", "operator", "worker"] },
-  { icon: Package, label: "Inventory", href: "/dashboard/inventory", roles: ["owner", "admin", "operator", "worker"] },
-  { icon: ShoppingCart, label: "Orders", href: "/dashboard/orders", roles: ["owner", "admin", "operator"] },
-  { icon: Users, label: "Suppliers", href: "/dashboard/suppliers", roles: ["owner", "admin"] },
-  { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["owner", "admin", "operator", "worker"] },
-  { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["owner", "admin"] },
-  { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["owner", "admin"] },
+const menuItems: { icon: any; label: string; href: string; roles: string[] }[] = [
+  { icon: LayoutDashboard, label: "Overview", href: "/dashboard", roles: ["admin", "worker"] },
+  { icon: Package, label: "Inventory", href: "/dashboard/inventory", roles: ["admin", "worker"] },
+  { icon: ShoppingCart, label: "Orders", href: "/dashboard/orders", roles: ["admin"] },
+  { icon: Users, label: "Suppliers", href: "/dashboard/suppliers", roles: ["admin"] },
+  { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["admin", "worker"] },
+  { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["admin"] },
+  { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["admin"] },
 ];
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  owner: { label: "Owner", color: "#6B4226", bg: "#f5f1ee" },
   admin: { label: "Admin", color: "#6B4226", bg: "#f5f1ee" },
-  operator: { label: "Operator", color: "#4285f4", bg: "rgba(66, 133, 244, 0.08)" },
+  owner: { label: "Owner", color: "#6B4226", bg: "#f5f1ee" },
   worker: { label: "Worker", color: "#34a853", bg: "rgba(52, 168, 83, 0.08)" },
 };
 
@@ -46,9 +45,10 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
-  const rawRole = ((session?.user as any)?.role || "worker").toLowerCase() as UserRole;
-  const role = (["owner", "admin", "operator", "worker"].includes(rawRole) ? rawRole : "worker") as UserRole;
-  const roleCfg = roleConfig[role];
+  const rawRole = ((session?.user as any)?.role || "worker").toLowerCase();
+  // Map owner to admin, fallback to worker
+  const role = (rawRole === "admin" || rawRole === "owner" ? "admin" : "worker") as UserRole;
+  const roleCfg = roleConfig[role] || roleConfig.worker;
   const userName = (session?.user as any)?.name || "User";
 
   const { data: dashData, isRealtime } = useDashboardData(role);
@@ -57,11 +57,8 @@ export default function Sidebar() {
   const getSummaryInfo = () => {
     if (!dashData) return null;
     const d = dashData as any;
-    if (role === "owner" || role === "admin") {
+    if (role === "admin") {
       return { label: "Active Orders", value: d.stats?.active_orders || 0, icon: ShoppingCart };
-    }
-    if (role === "operator") {
-      return { label: "Pending Orders", value: d.stats?.pending_orders || 0, icon: RefreshCw };
     }
     if (role === "worker") {
       return { label: "Tasks Left", value: d.stats?.pending_tasks || 0, icon: Sparkles };
