@@ -33,8 +33,8 @@ def _stock_status(item: Inventory) -> str:
     return "healthy"
 
 
-async def _build_owner_stats(db: AsyncSession) -> dict:
-    """Full business stats for Owner/Admin role."""
+async def _build_admin_stats(db: AsyncSession) -> dict:
+    """Full business stats for Admin/Owner role."""
     now = datetime.utcnow()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -49,6 +49,18 @@ async def _build_owner_stats(db: AsyncSession) -> dict:
         float(o.total_amount or 0) for o in monthly_orders
     )
 
+    # Revenue History (Last 7 days)
+    revenue_history = []
+    for i in range(6, -1, -1):
+        day = (now - timedelta(days=i)).date()
+        day_orders = [o for o in all_orders if o.created_at and o.created_at.date() == day]
+        day_revenue = sum(float(o.total_amount or 0) for o in day_orders)
+        revenue_history.append({
+            "date": day.strftime("%b %d"),
+            "revenue": day_revenue,
+            "orders": len(day_orders)
+        })
+
     # Inventory
     inv_result = await db.execute(select(Inventory))
     inventory = inv_result.scalars().all()
@@ -57,6 +69,20 @@ async def _build_owner_stats(db: AsyncSession) -> dict:
     )
     low_stock = [i for i in inventory if _stock_status(i) in ("low", "critical")]
     critical_stock = [i for i in inventory if _stock_status(i) == "critical"]
+
+    # Category Distribution
+    categories = {}
+    for item in inventory:
+        cat = item.category or "Other"
+        if cat not in categories:
+            categories[cat] = {"value": 0, "count": 0}
+        categories[cat]["value"] += (item.current_stock or 0) * 10
+        categories[cat]["count"] += 1
+    
+    category_distribution = [
+        {"name": cat, "value": data["value"], "count": data["count"]}
+        for cat, data in categories.items()
+    ]
 
     # Bills
     bills_result = await db.execute(select(Bill))
@@ -85,11 +111,10 @@ async def _build_owner_stats(db: AsyncSession) -> dict:
     # Users / Staff
     users_result = await db.execute(select(User))
     users = users_result.scalars().all()
-    operators = [u for u in users if u.role in ("operator",)]
-    workers = [u for u in users if u.role == "worker"]
+    workers = [u for u in users if u.role.lower() == "worker"]
 
     return {
-        "role": "owner",
+        "role": "admin",
         "stats": {
             "monthly_revenue": monthly_revenue,
             "active_orders": len(active_orders),
@@ -105,9 +130,10 @@ async def _build_owner_stats(db: AsyncSession) -> dict:
             "deliveries_in_transit": len(in_transit),
             "voice_calls_today": len(calls_today),
             "staff_count": len(users),
-            "operator_count": len(operators),
             "worker_count": len(workers),
         },
+        "revenue_history": revenue_history,
+        "category_distribution": sorted(category_distribution, key=lambda x: x["value"], reverse=True)[:5],
         "low_stock_items": [
             {
                 "id": str(i.id),
@@ -154,88 +180,6 @@ async def _build_owner_stats(db: AsyncSession) -> dict:
     }
 
 
-async def _build_operator_stats(db: AsyncSession) -> dict:
-    """Operations-focused stats for Operator role."""
-    now = datetime.utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    # Orders
-    orders_result = await db.execute(select(Order))
-    all_orders = orders_result.scalars().all()
-    pending_orders = [o for o in all_orders if o.status == "pending"]
-    today_orders = [o for o in all_orders if o.created_at and o.created_at >= today_start]
-
-    # Inventory
-    inv_result = await db.execute(select(Inventory))
-    inventory = inv_result.scalars().all()
-    critical = [i for i in inventory if _stock_status(i) == "critical"]
-    low = [i for i in inventory if _stock_status(i) == "low"]
-
-    # Deliveries
-    del_result = await db.execute(select(DeliveryUpdate))
-    deliveries = del_result.scalars().all()
-    active_deliveries = [d for d in deliveries if d.status in ("in_transit", "dispatched")]
-
-    return {
-        "role": "operator",
-        "stats": {
-            "pending_orders": len(pending_orders),
-            "today_orders": len(today_orders),
-            "total_active_orders": len([o for o in all_orders if o.status in ("pending", "dispatched")]),
-            "critical_stock": len(critical),
-            "low_stock": len(low),
-            "active_deliveries": len(active_deliveries),
-            "total_products": len(inventory),
-        },
-        "pending_orders": [
-            {
-                "id": str(o.id),
-                "order_ref": o.order_ref,
-                "quantity": o.quantity,
-                "status": o.status,
-                "total_amount": float(o.total_amount or 0),
-                "created_at": str(o.created_at),
-                "estimated_delivery": str(o.estimated_delivery) if o.estimated_delivery else None,
-            }
-            for o in sorted(pending_orders, key=lambda x: x.created_at or datetime.min, reverse=True)[:10]
-        ],
-        "alert_stock": [
-            {
-                "id": str(i.id),
-                "product_name": i.product_name,
-                "current_stock": i.current_stock,
-                "threshold": i.threshold,
-                "unit": i.unit,
-                "status": _stock_status(i),
-            }
-            for i in (critical + low)[:6]
-        ],
-        "active_deliveries": [
-            {
-                "id": str(d.id),
-                "order_id": str(d.order_id) if d.order_id else None,
-                "status": d.status,
-                "note": d.note,
-                "updated_at": str(d.updated_at),
-            }
-            for d in active_deliveries[:5]
-        ],
-        "inventory_summary": [
-            {
-                "id": str(i.id),
-                "product_name": i.product_name,
-                "current_stock": i.current_stock,
-                "threshold": i.threshold,
-                "unit": i.unit,
-                "category": i.category,
-                "status": _stock_status(i),
-            }
-            for i in inventory[:8]
-        ],
-        "last_updated": now.isoformat(),
-    }
-
-
 async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> dict:
     """Task and delivery focused stats for Worker role."""
     now = datetime.utcnow()
@@ -252,15 +196,15 @@ async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> d
     inventory = inv_result.scalars().all()
     low_stock = [i for i in inventory if _stock_status(i) in ("low", "critical")]
 
-    # Voice calls
+    # Voice calls (real history)
     calls_result = await db.execute(
-        select(CallLog).where(CallLog.created_at >= today_start)
+        select(CallLog).order_by(CallLog.created_at.desc()).limit(5)
     )
-    calls_today = calls_result.scalars().all()
+    calls = calls_result.scalars().all()
 
     # Build task list from real order + inventory data
     tasks = []
-    for i, order in enumerate(active_orders[:3]):
+    for i, order in enumerate(active_orders[:4]):
         tasks.append({
             "id": f"task-order-{order.id}",
             "task": f"Pack/process order {order.order_ref}",
@@ -296,10 +240,20 @@ async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> d
         "stats": {
             "total_tasks": len(tasks),
             "pending_tasks": len([t for t in tasks if t["status"] == "pending"]),
-            "voice_commands_today": len(calls_today),
+            "voice_commands_today": len([c for c in calls if c.created_at >= today_start]),
             "active_deliveries": len(active_deliveries),
+            "low_stock_count": len(low_stock),
         },
         "tasks": tasks,
+        "recent_calls": [
+            {
+                "id": str(c.id),
+                "text": c.transcript or c.intent or "Voice command",
+                "time": c.created_at.strftime("%I:%M %p"),
+                "status": "Processed" if c.response else "Pending"
+            }
+            for c in calls
+        ],
         "active_deliveries": [
             {
                 "id": str(d.id),
@@ -318,16 +272,11 @@ async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> d
 # Endpoints
 # ─────────────────────────────────────────
 
+@router.get("/admin")
 @router.get("/owner")
-async def owner_dashboard(db: AsyncSession = Depends(get_db)):
-    """Real-time owner dashboard data from PostgreSQL."""
-    return await _build_owner_stats(db)
-
-
-@router.get("/operator")
-async def operator_dashboard(db: AsyncSession = Depends(get_db)):
-    """Real-time operator dashboard data from PostgreSQL."""
-    return await _build_operator_stats(db)
+async def admin_dashboard(db: AsyncSession = Depends(get_db)):
+    """Real-time admin dashboard data from PostgreSQL."""
+    return await _build_admin_stats(db)
 
 
 @router.get("/worker")
@@ -368,10 +317,9 @@ async def _sse_generator(request: Request, db: AsyncSession, role: str) -> Async
             if await request.is_disconnected():
                 break
             try:
-                if role == "owner":
-                    data = await _build_owner_stats(db)
-                elif role == "operator":
-                    data = await _build_operator_stats(db)
+                role_lower = role.lower()
+                if role_lower in ("admin", "owner"):
+                    data = await _build_admin_stats(db)
                 else:
                     data = await _build_worker_stats(db)
 
@@ -387,12 +335,13 @@ async def _sse_generator(request: Request, db: AsyncSession, role: str) -> Async
 @router.get("/stream/{role}")
 async def dashboard_stream(role: str, request: Request, db: AsyncSession = Depends(get_db)):
     """SSE endpoint — streams real-time dashboard data every 15s."""
-    valid_roles = {"owner", "operator", "worker"}
-    if role not in valid_roles:
-        role = "worker"
+    valid_roles = {"admin", "owner", "worker"}
+    role_lower = role.lower()
+    if role_lower not in valid_roles:
+        role_lower = "worker"
 
     return StreamingResponse(
-        _sse_generator(request, db, role),
+        _sse_generator(request, db, role_lower),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

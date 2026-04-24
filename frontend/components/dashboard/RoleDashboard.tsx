@@ -1,7 +1,6 @@
 "use client";
 import { useSession } from "next-auth/react";
-import OwnerDashboard from "./OwnerDashboard";
-import OperatorDashboard from "./OperatorDashboard";
+import AdminDashboard from "./AdminDashboard";
 import WorkerDashboardView from "./WorkerDashboardView";
 
 export default function RoleDashboard() {
@@ -19,7 +18,6 @@ export default function RoleDashboard() {
     );
   }
 
-  if (role === "owner" || role === "admin") return <OwnerDashboard />;
-  if (role === "operator") return <OperatorDashboard />;
+  if (role === "owner" || role === "admin") return <AdminDashboard />;
   return <WorkerDashboardView />;
 }

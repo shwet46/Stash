@@ -97,22 +97,24 @@ export default function WorkerDashboardView() {
             <div style={{ marginTop: '3.5rem', textAlign: 'left' }}>
                <div className="d-flex align-center justify-between mb-4">
                   <h3 className="dashboard-card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <History size={16} /> Recent Entries Today
+                    <History size={16} /> Recent Voice Entries
                   </h3>
                </div>
                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {[
-                    { text: "500kg Basmati Rice from Mehta Suppliers", time: "10:30 AM", status: "Processed" },
-                    { text: "200 units Chana Dal, Expiry 2027", time: "09:45 AM", status: "Processed" }
-                  ].map((entry, i) => (
+                  {data?.recent_calls?.map((entry, i) => (
                     <div key={i} style={{ padding: '1rem', backgroundColor: 'var(--color-brand-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-brand-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                       <div>
-                          <p style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>{entry.text}</p>
-                          <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>{entry.time}</p>
+                       <div style={{ flex: 1, marginRight: '1rem' }}>
+                          <p style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-brand-800)', margin: 0 }}>{entry.text}</p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-muted)', margin: 0 }}>{entry.time}</p>
                        </div>
-                       <Badge variant="success" size="sm" dot>{entry.status}</Badge>
+                       <Badge variant={entry.status === "Processed" ? "success" : "warning"} size="sm" dot>{entry.status}</Badge>
                     </div>
                   ))}
+                  {(!data?.recent_calls || data.recent_calls.length === 0) && (
+                    <div style={{ padding: '2rem', textAlign: 'center', border: '1px dashed var(--color-brand-200)', borderRadius: 'var(--radius-md)' }}>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>No voice entries recorded yet today.</p>
+                    </div>
+                  )}
                </div>
             </div>
           </div>
