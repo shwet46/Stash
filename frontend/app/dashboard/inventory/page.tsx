@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { LuSearch as Search, LuPlus as Plus, LuFilter as Filter, LuTriangleAlert as AlertTriangle, LuDownload as Download, LuRefreshCw as RefreshCw } from 'react-icons/lu';
+import { LuPlus as Plus, LuFilter as Filter, LuTriangleAlert as AlertTriangle, LuDownload as Download, LuRefreshCw as RefreshCw } from 'react-icons/lu';
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 import SearchInput from "@/components/ui/SearchInput";
+import Modal from "@/components/ui/Modal";
 
-import { fetchInventory, StockItem } from "@/lib/api";
+import { fetchInventory, createInventoryItem, StockItem } from "@/lib/api";
 
 const statusConfig: Record<string, { variant: "success" | "warning" | "error"; label: string }> = {
   healthy: { variant: "success", label: "Healthy" },
@@ -15,21 +15,35 @@ const statusConfig: Record<string, { variant: "success" | "warning" | "error"; l
   critical: { variant: "error", label: "Critical" },
 };
 
+const CATEGORIES = ["Grains", "Pulses", "Oils", "Spices", "Essentials", "FMCG", "Beverages", "Snacks", "General"];
+const UNITS = ["kg", "L", "packs", "pcs", "bags", "boxes", "units"];
+
 export default function InventoryPage() {
   const { data: session } = useSession();
   const role = ((session?.user as any)?.role || "worker").toLowerCase();
   const isWorker = role === "worker";
 
+  // All hooks before any early returns
   const [inventory, setInventory] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    product_name: "",
+    category: "Grains",
+    current_stock: "",
+    threshold: "",
+    unit: "kg",
+    expiry_date: "",
+  });
 
   const loadInventory = async () => {
     try {
       setLoading(true);
       const data = await fetchInventory();
-      setInventory(data);
+      setInventory(data as StockItem[]);
     } catch (error) {
       console.error("Failed to fetch inventory:", error);
     } finally {
@@ -41,11 +55,34 @@ export default function InventoryPage() {
     loadInventory();
   }, []);
 
-  const categories = ["all", ...new Set(inventory.map((i) => i.category || "Uncategorized"))];
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await createInventoryItem({
+        product_name: formData.product_name,
+        category: formData.category,
+        current_stock: parseFloat(formData.current_stock),
+        threshold: parseFloat(formData.threshold),
+        unit: formData.unit,
+        expiry_date: formData.expiry_date || null,
+      });
+      setIsModalOpen(false);
+      setFormData({ product_name: "", category: "Grains", current_stock: "", threshold: "", unit: "kg", expiry_date: "" });
+      loadInventory();
+    } catch (error) {
+      console.error("Failed to add product:", error);
+      alert("Failed to add product. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const categories = ["all", ...new Set(inventory.map((i) => (i as any).category || "General"))];
 
   const filtered = inventory.filter((item) => {
     const matchSearch = item.product_name.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = categoryFilter === "all" || item.category === categoryFilter;
+    const matchCategory = categoryFilter === "all" || (item as any).category === categoryFilter;
     return matchSearch && matchCategory;
   });
 
@@ -61,23 +98,21 @@ export default function InventoryPage() {
             {inventory.length} products across godowns
           </p>
         </div>
-        {!isWorker && (
-          <div className="dashboard-header-right">
-            <Button variant="outline" size="sm" icon={<Download size={16} />}>
-              Export
-            </Button>
-            <Button size="sm" icon={<Plus size={16} />}>
+        <div className="dashboard-header-right">
+          <Button variant="outline" size="sm" icon={<Download size={16} />}>
+            Export
+          </Button>
+          {!isWorker && (
+            <Button size="sm" icon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>
               Add Product
             </Button>
-          </div>
-        )}
-        {isWorker && (
-          <div className="dashboard-header-right">
-             <Button variant="outline" size="sm" onClick={loadInventory} icon={<RefreshCw size={16} className={loading ? "spin" : ""} />}>
-               Refresh
-             </Button>
-          </div>
-        )}
+          )}
+          {isWorker && (
+            <Button variant="outline" size="sm" onClick={loadInventory} icon={<RefreshCw size={16} className={loading ? "spin" : ""} />}>
+              Refresh
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Alert banner */}
@@ -178,7 +213,7 @@ export default function InventoryPage() {
                     <td style={{ color: 'var(--color-muted)' }}>{item.threshold} {item.unit}</td>
                     <td style={{ color: 'var(--color-brand-700)' }}>{(item as any).godown || "Main"}</td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem' }}>
-                       {item.last_updated ? new Date((item as any).last_updated).toLocaleDateString() : "N/A"}
+                       {(item as any).last_updated ? new Date((item as any).last_updated).toLocaleDateString() : "N/A"}
                     </td>
                     <td>
                       <Badge variant={statusCfg.variant} dot size="sm">
@@ -199,6 +234,97 @@ export default function InventoryPage() {
           </table>
         </div>
       </div>
+
+      {/* Add Product Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Product" size="lg">
+        <form onSubmit={handleAddProduct} className="dashboard-modal-form">
+          <p className="dashboard-modal-intro">Add inventory details to start stock tracking and low-stock alerts.</p>
+
+          <div className="dashboard-field">
+            <label htmlFor="product-name" className="dashboard-field-label">Product Name</label>
+            <input
+              id="product-name"
+              className="dashboard-field-input"
+              placeholder="E.g. Basmati Rice"
+              value={formData.product_name}
+              onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="dashboard-modal-grid">
+            <div className="dashboard-field">
+              <label htmlFor="product-category" className="dashboard-field-label">Category</label>
+              <select
+                id="product-category"
+                className="dashboard-field-select"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              >
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="dashboard-field">
+              <label htmlFor="product-unit" className="dashboard-field-label">Unit</label>
+              <select
+                id="product-unit"
+                className="dashboard-field-select"
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+              >
+                {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="dashboard-modal-grid">
+            <div className="dashboard-field">
+              <label htmlFor="current-stock" className="dashboard-field-label">Current Stock</label>
+              <input
+                id="current-stock"
+                className="dashboard-field-input"
+                type="number"
+                placeholder="0"
+                min="0"
+                value={formData.current_stock}
+                onChange={(e) => setFormData({ ...formData, current_stock: e.target.value })}
+                required
+              />
+            </div>
+            <div className="dashboard-field">
+              <label htmlFor="low-stock-threshold" className="dashboard-field-label">Low Stock Threshold</label>
+              <input
+                id="low-stock-threshold"
+                className="dashboard-field-input"
+                type="number"
+                placeholder="0"
+                min="0"
+                value={formData.threshold}
+                onChange={(e) => setFormData({ ...formData, threshold: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="dashboard-field">
+            <label htmlFor="expiry-date" className="dashboard-field-label">Expiry Date (optional)</label>
+            <input
+              id="expiry-date"
+              className="dashboard-field-input"
+              type="date"
+              value={formData.expiry_date}
+              onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+            />
+          </div>
+
+          <div className="dashboard-modal-actions">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Product"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

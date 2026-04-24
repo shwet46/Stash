@@ -44,6 +44,31 @@ async def list_inventory(
     return items
 
 
+@router.post("")
+async def create_inventory_item(data: dict):
+    """Create a new inventory item"""
+    import uuid
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
+
+    item_id = str(uuid.uuid4())
+    item = {
+        "id": item_id,
+        "product_name": data.get("product_name", ""),
+        "category": data.get("category", "General"),
+        "current_stock": float(data.get("current_stock", 0)),
+        "threshold": float(data.get("threshold", 0)),
+        "unit": data.get("unit", "kg"),
+        "godown_id": data.get("godown_id"),
+        "expiry_date": data.get("expiry_date"),
+        "created_at": datetime.utcnow().isoformat(),
+        "last_updated": datetime.utcnow().isoformat(),
+    }
+
+    await firestore_service.db.collection("inventory").document(item_id).set(item)
+    return {"status": "created", "id": item_id}
+
+
 @router.get("/{item_id}")
 async def get_inventory_item(item_id: str):
     """Get single inventory item by ID"""

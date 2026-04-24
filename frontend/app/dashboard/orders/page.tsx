@@ -2,13 +2,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { LuSearch as Search, LuPlus as Plus, LuDownload as Download, LuEye as Eye, LuRefreshCw as RefreshCw } from 'react-icons/lu';
+import { LuPlus as Plus, LuDownload as Download, LuEye as Eye, LuRefreshCw as RefreshCw } from 'react-icons/lu';
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 import SearchInput from "@/components/ui/SearchInput";
+import Modal from "@/components/ui/Modal";
 
-import { fetchOrders, RecentOrder } from "@/lib/api";
+import { fetchOrders, RecentOrder, createOrder, fetchInventory } from "@/lib/api";
 
 const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "info"; label: string }> = {
   pending: { variant: "warning", label: "Pending" },
@@ -23,31 +23,33 @@ export default function OrdersPage() {
   const role = ((session?.user as any)?.role || "worker").toLowerCase();
   const isWorker = role === "worker";
 
+  // ── All hooks must come before any early returns ──
+  const [orders, setOrders] = useState<RecentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    buyer_name: "",
+    phone: "",
+    product_id: "",
+    quantity: "",
+    total_amount: "",
+  });
+
   useEffect(() => {
     if (session && isWorker) {
       router.push("/dashboard/inventory");
     }
   }, [session, isWorker, router]);
 
-  if (isWorker) {
-    return (
-      <div className="role-loading">
-        <div className="role-loading-spinner" />
-        <p className="role-loading-text">Redirecting to your workspace...</p>
-      </div>
-    );
-  }
-
-  const [orders, setOrders] = useState<RecentOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
   const loadOrders = async () => {
     try {
       setLoading(true);
       const data = await fetchOrders();
-      setOrders(data);
+      setOrders(data as RecentOrder[]);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
     } finally {
@@ -57,7 +59,40 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders();
+    fetchInventory().then((data) => setInventory(data as any[])).catch(console.error);
   }, []);
+
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await createOrder({
+        buyer_name: formData.buyer_name,
+        phone: formData.phone,
+        product_id: formData.product_id,
+        quantity: parseInt(formData.quantity, 10),
+        total_amount: parseFloat(formData.total_amount),
+      });
+      setIsNewOrderModalOpen(false);
+      setFormData({ buyer_name: "", phone: "", product_id: "", quantity: "", total_amount: "" });
+      loadOrders();
+    } catch (error) {
+      console.error("Failed to create order:", error);
+      alert("Failed to create order. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ── Early return for workers (after all hooks) ──
+  if (isWorker) {
+    return (
+      <div className="role-loading">
+        <div className="role-loading-spinner" />
+        <p className="role-loading-text">Redirecting to your workspace...</p>
+      </div>
+    );
+  }
 
   const filtered = orders.filter((order) => {
     const matchSearch =
@@ -78,23 +113,14 @@ export default function OrdersPage() {
             {orders.length} orders · Total: ₹{totalAmount.toLocaleString("en-IN")}
           </p>
         </div>
-        {!isWorker && (
-          <div className="dashboard-header-right">
-            <Button variant="outline" size="sm" icon={<Download size={16} />}>
-              Export
-            </Button>
-            <Button size="sm" icon={<Plus size={16} />}>
-              New Order
-            </Button>
-          </div>
-        )}
-        {isWorker && (
-           <div className="dashboard-header-right">
-              <Button variant="outline" size="sm" onClick={loadOrders} icon={<RefreshCw size={16} className={loading ? "spin" : ""} />}>
-                Refresh
-              </Button>
-           </div>
-        )}
+        <div className="dashboard-header-right">
+          <Button variant="outline" size="sm" icon={<Download size={16} />}>
+            Export
+          </Button>
+          <Button size="sm" icon={<Plus size={16} />} onClick={() => setIsNewOrderModalOpen(true)}>
+            New Order
+          </Button>
+        </div>
       </div>
 
       <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
@@ -166,13 +192,13 @@ export default function OrdersPage() {
                       {order.quantity} units
                     </td>
                     <td style={{ fontWeight: 600, color: 'var(--color-brand-800)' }}>
-                      ₹{order.total_amount.toLocaleString("en-IN")}
+                      ₹{(order.total_amount || 0).toLocaleString("en-IN")}
                     </td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>
                        {new Date(order.created_at).toLocaleDateString()}
                     </td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>
-                       {order.estimated_delivery ? new Date(order.estimated_delivery).toLocaleDateString() : "TBD"}
+                       {(order as any).estimated_delivery ? new Date((order as any).estimated_delivery).toLocaleDateString() : "TBD"}
                     </td>
                     <td>
                       <Badge variant={statusCfg.variant} dot size="sm">
@@ -198,6 +224,103 @@ export default function OrdersPage() {
           </table>
         </div>
       </div>
+
+      {/* New Order Modal */}
+      <Modal
+        isOpen={isNewOrderModalOpen}
+        onClose={() => setIsNewOrderModalOpen(false)}
+        title="Add New Order"
+        size="lg"
+      >
+        <form onSubmit={handleCreateOrder} className="dashboard-modal-form">
+          <p className="dashboard-modal-intro">Capture buyer and product details to place a new order.</p>
+
+          <div className="dashboard-modal-grid">
+            <div className="dashboard-field">
+              <label htmlFor="order-buyer-name" className="dashboard-field-label">Buyer Name</label>
+              <input
+                id="order-buyer-name"
+                className="dashboard-field-input"
+                placeholder="E.g. Ramesh Singh"
+                value={formData.buyer_name}
+                onChange={(e) => setFormData({ ...formData, buyer_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="dashboard-field">
+              <label htmlFor="order-phone" className="dashboard-field-label">Phone Number</label>
+              <input
+                id="order-phone"
+                className="dashboard-field-input"
+                placeholder="10-digit number"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="dashboard-field">
+            <label htmlFor="order-product" className="dashboard-field-label">Product</label>
+            <select
+              id="order-product"
+              className="dashboard-field-select"
+              value={formData.product_id}
+              onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
+              required
+            >
+              <option value="">Select a product...</option>
+              {inventory.map((item: any) => (
+                <option key={item.id} value={item.id}>
+                  {item.product_name} ({item.current_stock} {item.unit} available)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="dashboard-modal-grid">
+            <div className="dashboard-field">
+              <label htmlFor="order-quantity" className="dashboard-field-label">Quantity</label>
+              <input
+                id="order-quantity"
+                className="dashboard-field-input"
+                type="number"
+                placeholder="0"
+                min="1"
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                required
+              />
+            </div>
+            <div className="dashboard-field">
+              <label htmlFor="order-total-amount" className="dashboard-field-label">Total Amount (INR)</label>
+              <input
+                id="order-total-amount"
+                className="dashboard-field-input"
+                type="number"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                value={formData.total_amount}
+                onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="dashboard-modal-actions">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsNewOrderModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Add Order"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

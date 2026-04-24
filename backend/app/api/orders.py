@@ -57,6 +57,8 @@ async def create_order(data: dict):
         "id": order_id,
         "order_ref": order_ref,
         "buyer_id": data.get("buyer_id"),
+        "buyer_name": data.get("buyer_name"),
+        "phone": data.get("phone"),
         "product_id": data.get("product_id"),
         "quantity": data.get("quantity", 0),
         "status": "pending",

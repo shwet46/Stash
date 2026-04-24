@@ -66,6 +66,20 @@ export async function updateInventory(id: string, data: Record<string, unknown>)
   });
 }
 
+export async function createInventoryItem(data: Record<string, unknown>) {
+  return apiFetch("/api/inventory", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function createSupplier(data: Record<string, unknown>) {
+  return apiFetch("/api/suppliers", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ─────────────────────────────────────────
 // Orders
 // ─────────────────────────────────────────
