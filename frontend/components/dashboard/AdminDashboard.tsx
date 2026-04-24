@@ -107,7 +107,6 @@ export default function AdminDashboard() {
           <h1 className="dashboard-title" style={{ marginTop: "0.5rem" }}>
             {greeting}, {userName} 👋
           </h1>
-          <p className="dashboard-subtitle">Full business overview synced from PostgreSQL + Firestore</p>
         </div>
         <div className="dashboard-header-right">
           <span className="dashboard-date">

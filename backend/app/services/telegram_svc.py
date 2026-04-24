@@ -100,7 +100,7 @@ async def send_stockout_alert_to_owner(
     await send_message(owner_chat_id, text)
 
 
-async def handle_telegram_webhook(update: dict, db=None) -> None:
+async def handle_telegram_webhook(update: dict) -> None:
     """Handle incoming Telegram webhook updates"""
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")

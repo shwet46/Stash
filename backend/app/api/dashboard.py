@@ -1,21 +1,12 @@
-"""Dashboard API — real-time role-aware stats from PostgreSQL + Firestore"""
+"""Dashboard API — real-time role-aware stats from Firestore"""
 import asyncio
 import json
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func, and_
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.models.delivery import User, DeliveryUpdate, CallLog
-from app.models.inventory import Inventory
-from app.models.orders import Order
-from app.models.billing import Bill
-from app.models.suppliers import Supplier
-from app.models.buyers import Buyer
 from app.services.firestore_service import firestore_service
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -25,58 +16,59 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 # Helpers
 # ─────────────────────────────────────────
 
-def _stock_status(item: Inventory) -> str:
-    if item.current_stock < item.threshold * 0.5:
+def _stock_status(item: dict) -> str:
+    stock = float(item.get("current_stock", 0))
+    threshold = float(item.get("threshold", 0))
+    if stock < threshold * 0.5:
         return "critical"
-    elif item.current_stock < item.threshold:
+    elif stock < threshold:
         return "low"
     return "healthy"
 
+async def _fetch_collection(name: str):
+    if not firestore_service.is_enabled:
+        return []
+    docs = firestore_service.db.collection(name).stream()
+    items = []
+    async for doc in docs:
+        d = doc.to_dict()
+        d["id"] = doc.id
+        items.append(d)
+    return items
 
-async def _build_admin_stats(db: AsyncSession) -> dict:
+async def _build_admin_stats() -> dict:
     """Full business stats for Admin/Owner role."""
     now = datetime.utcnow()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
 
-    # Orders
-    orders_result = await db.execute(select(Order))
-    all_orders = orders_result.scalars().all()
-    active_orders = [o for o in all_orders if o.status in ("pending", "dispatched", "in_transit")]
-    monthly_orders = [o for o in all_orders if o.created_at and o.created_at >= month_start]
+    all_orders = await _fetch_collection("orders")
+    active_orders = [o for o in all_orders if o.get("status") in ("pending", "dispatched", "in_transit")]
+    monthly_orders = [o for o in all_orders if o.get("created_at") and o.get("created_at") >= month_start]
 
-    # Monthly revenue
-    monthly_revenue = sum(
-        float(o.total_amount or 0) for o in monthly_orders
-    )
+    monthly_revenue = sum(float(o.get("total_amount") or 0) for o in monthly_orders)
 
-    # Revenue History (Last 7 days)
     revenue_history = []
     for i in range(6, -1, -1):
-        day = (now - timedelta(days=i)).date()
-        day_orders = [o for o in all_orders if o.created_at and o.created_at.date() == day]
-        day_revenue = sum(float(o.total_amount or 0) for o in day_orders)
+        day = (now - timedelta(days=i)).date().isoformat()
+        day_orders = [o for o in all_orders if o.get("created_at") and o.get("created_at", "").startswith(day)]
+        day_revenue = sum(float(o.get("total_amount") or 0) for o in day_orders)
         revenue_history.append({
-            "date": day.strftime("%b %d"),
+            "date": (now - timedelta(days=i)).strftime("%b %d"),
             "revenue": day_revenue,
             "orders": len(day_orders)
         })
 
-    # Inventory
-    inv_result = await db.execute(select(Inventory))
-    inventory = inv_result.scalars().all()
-    total_inv_value = sum(
-        (item.current_stock or 0) * 10 for item in inventory  # placeholder unit price
-    )
+    inventory = await _fetch_collection("inventory")
+    total_inv_value = sum(float(item.get("current_stock", 0)) * 10 for item in inventory)
     low_stock = [i for i in inventory if _stock_status(i) in ("low", "critical")]
     critical_stock = [i for i in inventory if _stock_status(i) == "critical"]
 
-    # Category Distribution
     categories = {}
     for item in inventory:
-        cat = item.category or "Other"
+        cat = item.get("category") or "Other"
         if cat not in categories:
             categories[cat] = {"value": 0, "count": 0}
-        categories[cat]["value"] += (item.current_stock or 0) * 10
+        categories[cat]["value"] += float(item.get("current_stock", 0)) * 10
         categories[cat]["count"] += 1
     
     category_distribution = [
@@ -84,34 +76,22 @@ async def _build_admin_stats(db: AsyncSession) -> dict:
         for cat, data in categories.items()
     ]
 
-    # Bills
-    bills_result = await db.execute(select(Bill))
-    bills = bills_result.scalars().all()
-    pending_payments = sum(float(b.total or 0) for b in bills if b.status != "paid")
-    collected = sum(float(b.total or 0) for b in bills if b.status == "paid")
+    bills = await _fetch_collection("bills")
+    pending_payments = sum(float(b.get("total") or 0) for b in bills if b.get("status") != "paid")
+    collected = sum(float(b.get("total") or 0) for b in bills if b.get("status") == "paid")
 
-    # Suppliers & Buyers
-    sup_result = await db.execute(select(Supplier))
-    suppliers = sup_result.scalars().all()
-    buyer_result = await db.execute(select(Buyer))
-    buyers = buyer_result.scalars().all()
+    suppliers = await _fetch_collection("suppliers")
+    buyers = await _fetch_collection("buyers")
 
-    # Deliveries
-    del_result = await db.execute(select(DeliveryUpdate))
-    deliveries = del_result.scalars().all()
-    in_transit = [d for d in deliveries if d.status in ("in_transit", "dispatched")]
+    deliveries = await _fetch_collection("delivery_updates")
+    in_transit = [d for d in deliveries if d.get("status") in ("in_transit", "dispatched")]
 
-    # Call logs (voice)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    calls_result = await db.execute(
-        select(CallLog).where(CallLog.created_at >= today_start)
-    )
-    calls_today = calls_result.scalars().all()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    all_calls = await _fetch_collection("call_logs")
+    calls_today = [c for c in all_calls if c.get("created_at") and c.get("created_at") >= today_start]
 
-    # Users / Staff
-    users_result = await db.execute(select(User))
-    users = users_result.scalars().all()
-    workers = [u for u in users if u.role.lower() == "worker"]
+    users = await _fetch_collection("users")
+    workers = [u for u in users if u.get("role", "").lower() == "worker"]
 
     return {
         "role": "admin",
@@ -136,43 +116,43 @@ async def _build_admin_stats(db: AsyncSession) -> dict:
         "category_distribution": sorted(category_distribution, key=lambda x: x["value"], reverse=True)[:5],
         "low_stock_items": [
             {
-                "id": str(i.id),
-                "product_name": i.product_name,
-                "current_stock": i.current_stock,
-                "threshold": i.threshold,
-                "unit": i.unit,
+                "id": str(i.get("id")),
+                "product_name": i.get("product_name"),
+                "current_stock": i.get("current_stock"),
+                "threshold": i.get("threshold"),
+                "unit": i.get("unit"),
                 "status": _stock_status(i),
             }
             for i in low_stock[:5]
         ],
         "recent_orders": [
             {
-                "id": str(o.id),
-                "order_ref": o.order_ref,
-                "quantity": o.quantity,
-                "status": o.status,
-                "total_amount": float(o.total_amount or 0),
-                "created_at": str(o.created_at),
+                "id": str(o.get("id")),
+                "order_ref": o.get("order_ref"),
+                "quantity": o.get("quantity"),
+                "status": o.get("status"),
+                "total_amount": float(o.get("total_amount") or 0),
+                "created_at": o.get("created_at"),
             }
-            for o in sorted(all_orders, key=lambda x: x.created_at or datetime.min, reverse=True)[:8]
+            for o in sorted(all_orders, key=lambda x: x.get("created_at") or "", reverse=True)[:8]
         ],
         "recent_bills": [
             {
-                "id": str(b.id),
-                "bill_ref": b.bill_ref,
-                "amount": float(b.amount or 0),
-                "total": float(b.total or 0),
-                "status": b.status,
-                "created_at": str(b.created_at),
+                "id": str(b.get("id")),
+                "bill_ref": b.get("bill_ref"),
+                "amount": float(b.get("amount") or 0),
+                "total": float(b.get("total") or 0),
+                "status": b.get("status"),
+                "created_at": b.get("created_at"),
             }
-            for b in sorted(bills, key=lambda x: x.created_at or datetime.min, reverse=True)[:5]
+            for b in sorted(bills, key=lambda x: x.get("created_at") or "", reverse=True)[:5]
         ],
         "staff": [
             {
-                "id": str(u.id),
-                "name": u.name,
-                "role": u.role,
-                "phone": u.phone,
+                "id": str(u.get("id")),
+                "name": u.get("name"),
+                "role": u.get("role"),
+                "phone": u.get("phone"),
             }
             for u in users
         ],
@@ -180,49 +160,40 @@ async def _build_admin_stats(db: AsyncSession) -> dict:
     }
 
 
-async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> dict:
+async def _build_worker_stats(user_id: str | None = None) -> dict:
     """Task and delivery focused stats for Worker role."""
     now = datetime.utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
 
-    # Get recent orders for packing tasks
-    orders_result = await db.execute(
-        select(Order).where(Order.status.in_(["pending", "dispatched"]))
-    )
-    active_orders = orders_result.scalars().all()
+    all_orders = await _fetch_collection("orders")
+    active_orders = [o for o in all_orders if o.get("status") in ("pending", "dispatched")]
 
-    # Get inventory for stock-count tasks
-    inv_result = await db.execute(select(Inventory))
-    inventory = inv_result.scalars().all()
+    inventory = await _fetch_collection("inventory")
     low_stock = [i for i in inventory if _stock_status(i) in ("low", "critical")]
 
-    # Voice calls (real history)
-    calls_result = await db.execute(
-        select(CallLog).order_by(CallLog.created_at.desc()).limit(5)
-    )
-    calls = calls_result.scalars().all()
+    all_calls = await _fetch_collection("call_logs")
+    calls = sorted(all_calls, key=lambda x: x.get("created_at") or "", reverse=True)[:5]
 
-    # Build task list from real order + inventory data
     tasks = []
-    for i, order in enumerate(active_orders[:4]):
+    for order in active_orders[:4]:
         tasks.append({
-            "id": f"task-order-{order.id}",
-            "task": f"Pack/process order {order.order_ref}",
+            "id": f"task-order-{order.get('id')}",
+            "task": f"Pack/process order {order.get('order_ref')}",
             "product": "—",
-            "qty": f"{order.quantity} units",
+            "qty": f"{order.get('quantity')} units",
             "location": "Godown Bay",
-            "priority": "high" if order.status == "pending" else "medium",
-            "status": "pending" if order.status == "pending" else "in_progress",
+            "priority": "high" if order.get("status") == "pending" else "medium",
+            "status": "pending" if order.get("status") == "pending" else "in_progress",
             "due_time": "Today",
             "source": "order",
         })
 
     for item in low_stock[:2]:
         tasks.append({
-            "id": f"task-stock-{item.id}",
-            "task": f"Restock / count {item.product_name}",
-            "product": item.product_name,
-            "qty": f"{item.current_stock} {item.unit or ''} remaining",
+            "id": f"task-stock-{item.get('id')}",
+            "task": f"Restock / count {item.get('product_name')}",
+            "product": item.get("product_name"),
+            "qty": f"{item.get('current_stock')} {item.get('unit') or ''} remaining",
             "location": "Storage area",
             "priority": "high" if _stock_status(item) == "critical" else "medium",
             "status": "pending",
@@ -230,37 +201,42 @@ async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> d
             "source": "inventory",
         })
 
-    # Deliveries worker might be responsible for
-    del_result = await db.execute(select(DeliveryUpdate))
-    deliveries = del_result.scalars().all()
-    active_deliveries = [d for d in deliveries if d.status in ("in_transit", "dispatched")]
+    deliveries = await _fetch_collection("delivery_updates")
+    active_deliveries = [d for d in deliveries if d.get("status") in ("in_transit", "dispatched")]
+
+    def format_time(iso_str):
+        if not iso_str: return ""
+        try:
+            return datetime.fromisoformat(iso_str).strftime("%I:%M %p")
+        except:
+            return iso_str
 
     return {
         "role": "worker",
         "stats": {
             "total_tasks": len(tasks),
             "pending_tasks": len([t for t in tasks if t["status"] == "pending"]),
-            "voice_commands_today": len([c for c in calls if c.created_at >= today_start]),
+            "voice_commands_today": len([c for c in all_calls if c.get("created_at") and c.get("created_at") >= today_start]),
             "active_deliveries": len(active_deliveries),
             "low_stock_count": len(low_stock),
         },
         "tasks": tasks,
         "recent_calls": [
             {
-                "id": str(c.id),
-                "text": c.transcript or c.intent or "Voice command",
-                "time": c.created_at.strftime("%I:%M %p"),
-                "status": "Processed" if c.response else "Pending"
+                "id": str(c.get("id")),
+                "text": c.get("transcript") or c.get("intent") or "Voice command",
+                "time": format_time(c.get("created_at")),
+                "status": "Processed" if c.get("response") else "Pending"
             }
             for c in calls
         ],
         "active_deliveries": [
             {
-                "id": str(d.id),
-                "order_id": str(d.order_id) if d.order_id else None,
-                "status": d.status,
-                "note": d.note,
-                "updated_at": str(d.updated_at),
+                "id": str(d.get("id")),
+                "order_id": str(d.get("order_id")) if d.get("order_id") else None,
+                "status": d.get("status"),
+                "note": d.get("note"),
+                "updated_at": d.get("updated_at"),
             }
             for d in active_deliveries[:3]
         ],
@@ -274,34 +250,31 @@ async def _build_worker_stats(db: AsyncSession, user_id: str | None = None) -> d
 
 @router.get("/admin")
 @router.get("/owner")
-async def admin_dashboard(db: AsyncSession = Depends(get_db)):
-    """Real-time admin dashboard data from PostgreSQL."""
-    return await _build_admin_stats(db)
+async def admin_dashboard():
+    """Real-time admin dashboard data from Firestore."""
+    return await _build_admin_stats()
 
 
 @router.get("/worker")
-async def worker_dashboard(db: AsyncSession = Depends(get_db)):
-    """Real-time worker dashboard data from PostgreSQL."""
-    return await _build_worker_stats(db)
+async def worker_dashboard():
+    """Real-time worker dashboard data from Firestore."""
+    return await _build_worker_stats()
 
 
 @router.get("/summary")
-async def dashboard_summary(db: AsyncSession = Depends(get_db)):
+async def dashboard_summary():
     """Quick KPI summary for all roles."""
-    inv_result = await db.execute(select(Inventory))
-    inventory = inv_result.scalars().all()
-    orders_result = await db.execute(select(Order))
-    orders = orders_result.scalars().all()
-    bills_result = await db.execute(select(Bill))
-    bills = bills_result.scalars().all()
+    inventory = await _fetch_collection("inventory")
+    orders = await _fetch_collection("orders")
+    bills = await _fetch_collection("bills")
 
     return {
         "total_products": len(inventory),
-        "active_orders": len([o for o in orders if o.status in ("pending", "dispatched")]),
-        "monthly_revenue": sum(float(b.total or 0) for b in bills if b.status == "paid"),
+        "active_orders": len([o for o in orders if o.get("status") in ("pending", "dispatched")]),
+        "monthly_revenue": sum(float(b.get("total") or 0) for b in bills if b.get("status") == "paid"),
         "low_stock_count": len([i for i in inventory if _stock_status(i) != "healthy"]),
         "critical_count": len([i for i in inventory if _stock_status(i) == "critical"]),
-        "pending_payments": sum(float(b.total or 0) for b in bills if b.status != "paid"),
+        "pending_payments": sum(float(b.get("total") or 0) for b in bills if b.get("status") != "paid"),
         "last_updated": datetime.utcnow().isoformat(),
     }
 
@@ -310,7 +283,7 @@ async def dashboard_summary(db: AsyncSession = Depends(get_db)):
 # SSE — Server-Sent Events for real-time push
 # ─────────────────────────────────────────
 
-async def _sse_generator(request: Request, db: AsyncSession, role: str) -> AsyncGenerator[str, None]:
+async def _sse_generator(request: Request, role: str) -> AsyncGenerator[str, None]:
     """Yield real-time stats every 15 seconds via SSE."""
     try:
         while True:
@@ -319,9 +292,9 @@ async def _sse_generator(request: Request, db: AsyncSession, role: str) -> Async
             try:
                 role_lower = role.lower()
                 if role_lower in ("admin", "owner"):
-                    data = await _build_admin_stats(db)
+                    data = await _build_admin_stats()
                 else:
-                    data = await _build_worker_stats(db)
+                    data = await _build_worker_stats()
 
                 yield f"data: {json.dumps(data)}\n\n"
             except Exception as e:
@@ -333,7 +306,7 @@ async def _sse_generator(request: Request, db: AsyncSession, role: str) -> Async
 
 
 @router.get("/stream/{role}")
-async def dashboard_stream(role: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def dashboard_stream(role: str, request: Request):
     """SSE endpoint — streams real-time dashboard data every 15s."""
     valid_roles = {"admin", "owner", "worker"}
     role_lower = role.lower()
@@ -341,7 +314,7 @@ async def dashboard_stream(role: str, request: Request, db: AsyncSession = Depen
         role_lower = "worker"
 
     return StreamingResponse(
-        _sse_generator(request, db, role_lower),
+        _sse_generator(request, role_lower),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

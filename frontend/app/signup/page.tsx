@@ -29,14 +29,22 @@ export default function SignupPage() {
 
   const isNameValid = name.trim().length >= 2;
   const isPhoneValid = /^[0-9]{10}$/.test(phone);
-  const isPasswordValid = password.length >= 8;
+  const isPasswordValid = password.length >= 6;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     
-    if (!isNameValid || !isPhoneValid || !isPasswordValid) {
-      setError("Please check all fields.");
+    if (!isNameValid) {
+      setError("Please enter a valid name (min 2 characters).");
+      return;
+    }
+    if (!isPhoneValid) {
+      setError("Please enter a valid 10-digit phone number.");
+      return;
+    }
+    if (!isPasswordValid) {
+      setError("Password must be at least 6 characters long.");
       return;
     }
     
@@ -170,7 +178,7 @@ export default function SignupPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 characters"
+                  placeholder="Min. 6 characters"
                   className="input-field has-right-icon"
                   required
                 />

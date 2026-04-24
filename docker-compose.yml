@@ -1,21 +1,5 @@
 
 services:
-  postgres:
-    image: postgis/postgis:16-3.4
-    environment:
-      POSTGRES_DB: stash
-      POSTGRES_USER: stash
-      POSTGRES_PASSWORD: stash
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stash"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     ports:
@@ -32,8 +16,6 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     env_file: .env
@@ -45,8 +27,6 @@ services:
     build: ./backend
     command: uv run celery -A app.workers.celery_app worker --loglevel=info
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     env_file: .env
@@ -64,5 +44,3 @@ services:
       - /app/node_modules
       - /app/.next
 
-volumes:
-  postgres_data:

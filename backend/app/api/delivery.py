@@ -1,67 +1,61 @@
 """Delivery API endpoints"""
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
-from app.models.delivery import DeliveryUpdate
+from fastapi import APIRouter, HTTPException
+import uuid
+from datetime import datetime
+from app.services.firestore_service import firestore_service
 
 router = APIRouter(prefix="/api/delivery", tags=["delivery"])
 
 
 @router.get("")
-async def list_deliveries(db: AsyncSession = Depends(get_db)):
+async def list_deliveries():
     """List all delivery updates"""
-    result = await db.execute(
-        select(DeliveryUpdate).order_by(DeliveryUpdate.updated_at.desc())
-    )
-    updates = result.scalars().all()
+    if not firestore_service.is_enabled:
+        return []
 
-    return [
-        {
-            "id": str(u.id),
-            "order_id": str(u.order_id) if u.order_id else None,
-            "status": u.status,
-            "note": u.note,
-            "updated_at": str(u.updated_at),
-        }
-        for u in updates
-    ]
+    docs = firestore_service.db.collection("delivery_updates").stream()
+    updates = []
+    async for doc in docs:
+        u = doc.to_dict()
+        u["id"] = doc.id
+        updates.append(u)
+
+    updates.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
+
+    return updates
 
 
 @router.post("/{order_id}")
-async def add_delivery_update(
-    order_id: str, data: dict, db: AsyncSession = Depends(get_db)
-):
+async def add_delivery_update(order_id: str, data: dict):
     """Add a delivery status update"""
-    import uuid
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
 
-    update = DeliveryUpdate(
-        id=uuid.uuid4(),
-        order_id=order_id,
-        status=data.get("status", ""),
-        note=data.get("note", ""),
-    )
-    db.add(update)
-    await db.commit()
+    update_id = str(uuid.uuid4())
+    update = {
+        "id": update_id,
+        "order_id": order_id,
+        "status": data.get("status", ""),
+        "note": data.get("note", ""),
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    await firestore_service.db.collection("delivery_updates").document(update_id).set(update)
 
-    return {"status": "created", "id": str(update.id)}
+    return {"status": "created", "id": update_id}
 
 
 @router.get("/{order_id}")
-async def get_delivery_timeline(order_id: str, db: AsyncSession = Depends(get_db)):
+async def get_delivery_timeline(order_id: str):
     """Get delivery timeline for an order"""
-    result = await db.execute(
-        select(DeliveryUpdate)
-        .where(DeliveryUpdate.order_id == order_id)
-        .order_by(DeliveryUpdate.updated_at)
-    )
-    updates = result.scalars().all()
+    if not firestore_service.is_enabled:
+        return []
 
-    return [
-        {
-            "status": u.status,
-            "note": u.note,
-            "updated_at": str(u.updated_at),
-        }
-        for u in updates
-    ]
+    docs = firestore_service.db.collection("delivery_updates").where("order_id", "==", order_id).stream()
+    updates = []
+    async for doc in docs:
+        updates.append(doc.to_dict())
+
+    updates.sort(key=lambda x: x.get("updated_at") or "")
+
+    return updates

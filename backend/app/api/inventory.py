@@ -1,11 +1,8 @@
 """Inventory API endpoints"""
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from app.db.session import get_db
-from app.models.inventory import Inventory
+from fastapi import APIRouter, Query, HTTPException
 from app.services.firestore_service import firestore_service
 from typing import Optional
+from datetime import datetime
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
@@ -16,120 +13,108 @@ async def list_inventory(
     godown_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
 ):
     """List all inventory items with optional filters"""
-    query = select(Inventory)
+    if not firestore_service.is_enabled:
+        return []
+
+    collection = firestore_service.db.collection("inventory")
+    query = collection
 
     if category:
-        query = query.where(Inventory.category == category)
+        query = query.where("category", "==", category)
     if godown_id:
-        query = query.where(Inventory.godown_id == godown_id)
+        query = query.where("godown_id", "==", godown_id)
+
+    docs = query.stream()
+    items = []
+    async for doc in docs:
+        item = doc.to_dict()
+        item["id"] = doc.id
+        item["status"] = _get_stock_status(item)
+        items.append(item)
+
     if search:
-        query = query.where(Inventory.product_name.ilike(f"%{search}%"))
+        search_lower = search.lower()
+        items = [i for i in items if i.get("product_name") and search_lower in i["product_name"].lower()]
 
-    result = await db.execute(query)
-    items = result.scalars().all()
-
-    # Apply status filter in Python (derived field)
     if status:
-        items = [
-            item
-            for item in items
-            if _get_stock_status(item) == status
-        ]
+        items = [i for i in items if i.get("status") == status]
 
-    return [
-        {
-            "id": str(item.id),
-            "product_name": item.product_name,
-            "category": item.category,
-            "current_stock": item.current_stock,
-            "threshold": item.threshold,
-            "unit": item.unit,
-            "expiry_date": str(item.expiry_date) if item.expiry_date else None,
-            "godown_id": str(item.godown_id) if item.godown_id else None,
-            "status": _get_stock_status(item),
-            "last_updated": str(item.last_updated),
-        }
-        for item in items
-    ]
+    return items
 
 
 @router.get("/{item_id}")
-async def get_inventory_item(item_id: str, db: AsyncSession = Depends(get_db)):
+async def get_inventory_item(item_id: str):
     """Get single inventory item by ID"""
-    result = await db.execute(select(Inventory).where(Inventory.id == item_id))
-    item = result.scalar_one_or_none()
-    if not item:
-        return {"error": "Item not found"}, 404
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
 
-    return {
-        "id": str(item.id),
-        "product_name": item.product_name,
-        "category": item.category,
-        "current_stock": item.current_stock,
-        "threshold": item.threshold,
-        "unit": item.unit,
-        "expiry_date": str(item.expiry_date) if item.expiry_date else None,
-        "status": _get_stock_status(item),
-    }
+    doc = await firestore_service.db.collection("inventory").document(item_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    item = doc.to_dict()
+    item["id"] = doc.id
+    item["status"] = _get_stock_status(item)
+    return item
 
 
 @router.put("/{item_id}")
-async def update_inventory(
-    item_id: str, data: dict, db: AsyncSession = Depends(get_db)
-):
+async def update_inventory(item_id: str, data: dict):
     """Update inventory item (e.g. from voice command)"""
-    result = await db.execute(select(Inventory).where(Inventory.id == item_id))
-    item = result.scalar_one_or_none()
-    if not item:
-        return {"error": "Item not found"}, 404
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
 
-    for key, value in data.items():
-        if hasattr(item, key):
-            setattr(item, key, value)
+    doc_ref = firestore_service.db.collection("inventory").document(item_id)
+    doc = await doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Item not found")
 
-    await db.commit()
+    # Merge data
+    update_payload = {k: v for k, v in data.items() if k in ["product_name", "category", "current_stock", "threshold", "unit", "expiry_date", "godown_id"]}
+    update_payload["last_updated"] = datetime.utcnow().isoformat()
+    
+    await doc_ref.update(update_payload)
 
-    # Sync to Firestore
-    try:
-        await firestore_service.upsert_document("inventory", str(item.id), {
-            "id": str(item.id),
-            "product_name": item.product_name,
-            "current_stock": item.current_stock,
-            "threshold": item.threshold,
-            "status": _get_stock_status(item),
-            "last_updated": item.last_updated.isoformat() if item.last_updated else None
-        })
-    except Exception as e:
-        print(f"Firestore sync error: {e}")
-
-    return {"status": "updated", "id": str(item.id)}
+    return {"status": "updated", "id": item_id}
 
 
 @router.get("/summary/stats")
-async def inventory_stats(db: AsyncSession = Depends(get_db)):
+async def inventory_stats():
     """Get inventory summary statistics"""
-    result = await db.execute(select(Inventory))
-    items = result.scalars().all()
+    if not firestore_service.is_enabled:
+        return {
+            "total_products": 0,
+            "low_stock_count": 0,
+            "critical_count": 0,
+            "categories": 0,
+        }
+
+    docs = firestore_service.db.collection("inventory").stream()
+    items = []
+    async for doc in docs:
+        items.append(doc.to_dict())
 
     total_items = len(items)
-    low_stock = sum(1 for i in items if i.current_stock < i.threshold)
-    critical = sum(1 for i in items if i.current_stock < i.threshold * 0.5)
+    low_stock = sum(1 for i in items if i.get("current_stock", 0) < i.get("threshold", 0))
+    critical = sum(1 for i in items if i.get("current_stock", 0) < i.get("threshold", 0) * 0.5)
+    categories = len(set(i.get("category") for i in items if i.get("category")))
 
     return {
         "total_products": total_items,
         "low_stock_count": low_stock,
         "critical_count": critical,
-        "categories": len(set(i.category for i in items if i.category)),
+        "categories": categories,
     }
 
 
-def _get_stock_status(item: Inventory) -> str:
+def _get_stock_status(item: dict) -> str:
     """Derive stock status from current stock vs threshold"""
-    if item.current_stock < item.threshold * 0.5:
+    stock = float(item.get("current_stock", 0))
+    threshold = float(item.get("threshold", 0))
+    if stock < threshold * 0.5:
         return "critical"
-    elif item.current_stock < item.threshold:
+    elif stock < threshold:
         return "low"
     return "healthy"

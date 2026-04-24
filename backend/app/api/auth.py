@@ -1,13 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.db.session import get_db
-from app.models.delivery import User
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.core.security import get_password_hash, verify_password, create_access_token
-from datetime import timedelta
+from datetime import timedelta, datetime
+import uuid
 from app.core.config import settings
 from app.services.firestore_service import firestore_service
 
@@ -31,50 +28,55 @@ def get_current_user_phone(token: str = Depends(oauth2_scheme)) -> str:
     except JWTError:
         raise credentials_exception
 
+
+async def _get_user_by_phone(phone: str):
+    if not firestore_service.is_enabled:
+        return None
+    docs = firestore_service.db.collection("users").where("phone", "==", phone).limit(1).stream()
+    async for doc in docs:
+        d = doc.to_dict()
+        d["id"] = doc.id
+        return d
+    return None
+
+
 @router.post("/signup", response_model=UserResponse)
-async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def signup(user_in: UserCreate):
     # Check if user already exists
-    result = await db.execute(select(User).where(User.phone == user_in.phone))
-    user = result.scalars().first()
-    if user:
+    existing_user = await _get_user_by_phone(user_in.phone)
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="User with this phone number already exists",
         )
     
-    # Create new user
-    db_user = User(
-        name=user_in.name,
-        phone=user_in.phone,
-        email=user_in.email,
-        hashed_password=get_password_hash(user_in.password),
-        role=user_in.role
-    )
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
 
-    # Store in Firestore as well
+    new_id = str(uuid.uuid4())
+    now_iso = datetime.utcnow().isoformat()
+    
+    user_data = {
+        "id": new_id,
+        "name": user_in.name,
+        "phone": user_in.phone,
+        "email": user_in.email,
+        "hashed_password": get_password_hash(user_in.password),
+        "role": user_in.role,
+        "created_at": now_iso
+    }
+
     try:
-        await firestore_service.create_user({
-            "id": str(db_user.id),
-            "name": db_user.name,
-            "phone": db_user.phone,
-            "email": db_user.email,
-            "role": db_user.role,
-            "created_at": db_user.created_at.isoformat() if db_user.created_at else None
-        })
+        await firestore_service.db.collection("users").document(new_id).set(user_data)
     except Exception as e:
-        print(f"Error storing user in Firestore: {e}")
-        # We don't fail the whole request if Firestore fails, but we log it
+        raise HTTPException(status_code=500, detail=f"Error storing user in Firestore: {e}")
 
-    return db_user
+    return user_data
 
 @router.post("/login", response_model=Token)
-async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.phone == user_in.phone))
-    user = result.scalars().first()
-    if not user or not verify_password(user_in.password, user.hashed_password):
+async def login(user_in: UserLogin):
+    user = await _get_user_by_phone(user_in.phone)
+    if not user or not verify_password(user_in.password, user.get("hashed_password", "")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect phone number or password",
@@ -83,17 +85,15 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        subject=user.phone, expires_delta=access_token_expires
+        subject=user.get("phone"), expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(
-    db: AsyncSession = Depends(get_db),
     current_user_phone: str = Depends(get_current_user_phone),
 ):
-    result = await db.execute(select(User).where(User.phone == current_user_phone))
-    user = result.scalars().first()
+    user = await _get_user_by_phone(current_user_phone)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

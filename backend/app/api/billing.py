@@ -1,49 +1,43 @@
 """Billing API endpoints"""
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
-from app.models.billing import Bill
+from fastapi import APIRouter, Query
+from app.services.firestore_service import firestore_service
 from app.services.billing_pdf import generate_invoice_pdf
 from typing import Optional
-from fastapi import Query
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
 @router.get("")
-async def list_bills(
-    status: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-):
+async def list_bills(status: Optional[str] = Query(None)):
     """List all bills"""
-    query = select(Bill)
+    if not firestore_service.is_enabled:
+        return []
+
+    collection = firestore_service.db.collection("bills")
+    query = collection
+
     if status:
-        query = query.where(Bill.status == status)
+        query = query.where("status", "==", status)
 
-    result = await db.execute(query.order_by(Bill.created_at.desc()))
-    bills = result.scalars().all()
+    docs = query.stream()
+    bills = []
+    async for doc in docs:
+        b = doc.to_dict()
+        b["id"] = doc.id
+        # convert decimal/numbers
+        for k in ["amount", "gst_rate", "gst_amount", "total"]:
+            if k in b and b[k] is not None:
+                b[k] = float(b[k])
+        bills.append(b)
 
-    return [
-        {
-            "id": str(b.id),
-            "bill_ref": b.bill_ref,
-            "order_id": str(b.order_id) if b.order_id else None,
-            "buyer_id": str(b.buyer_id) if b.buyer_id else None,
-            "amount": float(b.amount),
-            "gst_rate": float(b.gst_rate),
-            "gst_amount": float(b.gst_amount),
-            "total": float(b.total),
-            "status": b.status,
-            "pdf_url": b.pdf_url,
-            "created_at": str(b.created_at),
-        }
-        for b in bills
-    ]
+    # Sort by created_at desc (in python)
+    bills.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+
+    return bills
 
 
 @router.post("/generate/{order_id}")
-async def generate_bill(order_id: str, db: AsyncSession = Depends(get_db)):
+async def generate_bill(order_id: str):
     """Generate invoice PDF for an order"""
     # In production, fetch order details and generate PDF
     bill_data = {

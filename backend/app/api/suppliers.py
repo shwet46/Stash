@@ -1,66 +1,62 @@
 """Suppliers API endpoints"""
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
-from app.models.suppliers import Supplier
+from fastapi import APIRouter, HTTPException
+import uuid
+from app.services.firestore_service import firestore_service
 
 router = APIRouter(prefix="/api/suppliers", tags=["suppliers"])
 
 
 @router.get("")
-async def list_suppliers(db: AsyncSession = Depends(get_db)):
+async def list_suppliers():
     """List all suppliers"""
-    result = await db.execute(select(Supplier).order_by(Supplier.priority))
-    suppliers = result.scalars().all()
+    if not firestore_service.is_enabled:
+        return []
 
-    return [
-        {
-            "id": str(s.id),
-            "name": s.name,
-            "phone": s.phone,
-            "telegram_chat_id": s.telegram_chat_id,
-            "product_id": str(s.product_id) if s.product_id else None,
-            "priority": s.priority,
-            "status": s.status,
-            "last_contacted": str(s.last_contacted) if s.last_contacted else None,
-        }
-        for s in suppliers
-    ]
+    docs = firestore_service.db.collection("suppliers").stream()
+    suppliers = []
+    async for doc in docs:
+        s = doc.to_dict()
+        s["id"] = doc.id
+        suppliers.append(s)
+
+    suppliers.sort(key=lambda x: x.get("priority", 1))
+
+    return suppliers
 
 
 @router.post("")
-async def create_supplier(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_supplier(data: dict):
     """Add a new supplier"""
-    import uuid
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
 
-    supplier = Supplier(
-        id=uuid.uuid4(),
-        name=data["name"],
-        phone=data["phone"],
-        telegram_chat_id=data.get("telegram_chat_id"),
-        product_id=data.get("product_id"),
-        priority=data.get("priority", 1),
-        status="active",
-    )
-    db.add(supplier)
-    await db.commit()
+    supplier_id = str(uuid.uuid4())
+    supplier = {
+        "id": supplier_id,
+        "name": data["name"],
+        "phone": data["phone"],
+        "telegram_chat_id": data.get("telegram_chat_id"),
+        "product_id": data.get("product_id"),
+        "priority": data.get("priority", 1),
+        "status": "active",
+    }
 
-    return {"status": "created", "id": str(supplier.id)}
+    await firestore_service.db.collection("suppliers").document(supplier_id).set(supplier)
+
+    return {"status": "created", "id": supplier_id}
 
 
 @router.get("/{supplier_id}")
-async def get_supplier(supplier_id: str, db: AsyncSession = Depends(get_db)):
+async def get_supplier(supplier_id: str):
     """Get supplier by ID"""
-    result = await db.execute(select(Supplier).where(Supplier.id == supplier_id))
-    supplier = result.scalar_one_or_none()
-    if not supplier:
-        return {"error": "Supplier not found"}, 404
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=500, detail="Firestore disabled")
 
-    return {
-        "id": str(supplier.id),
-        "name": supplier.name,
-        "phone": supplier.phone,
-        "priority": supplier.priority,
-        "status": supplier.status,
-    }
+    doc = await firestore_service.db.collection("suppliers").document(supplier_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    supplier = doc.to_dict()
+    supplier["id"] = doc.id
+
+    return supplier

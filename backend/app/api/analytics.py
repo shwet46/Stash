@@ -1,15 +1,12 @@
 """Analytics API endpoints"""
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
 @router.get("/summary")
-async def dashboard_summary(db: AsyncSession = Depends(get_db)):
+async def dashboard_summary():
     """Get dashboard summary statistics"""
-    # In production, these would be computed from actual database queries
     return {
         "total_inventory_value": 1845000,
         "active_orders": 47,
@@ -25,7 +22,7 @@ async def dashboard_summary(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/revenue")
-async def revenue_analytics(period: str = "6m", db: AsyncSession = Depends(get_db)):
+async def revenue_analytics(period: str = "6m"):
     """Get revenue analytics"""
     return {
         "period": period,
@@ -44,7 +41,7 @@ async def revenue_analytics(period: str = "6m", db: AsyncSession = Depends(get_d
 
 
 @router.get("/top-products")
-async def top_products(db: AsyncSession = Depends(get_db)):
+async def top_products():
     """Get top products by revenue"""
     return [
         {"name": "Basmati Rice", "revenue": 285000, "orders": 42},
@@ -56,7 +53,7 @@ async def top_products(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/top-buyers")
-async def top_buyers(db: AsyncSession = Depends(get_db)):
+async def top_buyers():
     """Get top buyers by revenue"""
     return [
         {"name": "Mehta & Sons", "revenue": 285000, "orders": 42},
@@ -68,7 +65,7 @@ async def top_buyers(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/godown-performance")
-async def godown_performance(db: AsyncSession = Depends(get_db)):
+async def godown_performance():
     """Get performance metrics per godown"""
     return [
         {"name": "Mumbai Central", "revenue": 520000, "products": 15, "orders": 85},

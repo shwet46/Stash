@@ -1,15 +1,16 @@
 """Delivery tracking worker"""
+from app.services.firestore_service import firestore_service
 
 
-async def check_delivery_updates(db):
+async def check_delivery_updates():
     """Check and update delivery statuses, notify buyers"""
-    from sqlalchemy import select
-    from app.models.orders import Order
+    if not firestore_service.is_enabled:
+        return 0
 
-    result = await db.execute(
-        select(Order).where(Order.status.in_(["dispatched", "in_transit"]))
-    )
-    active_deliveries = result.scalars().all()
+    docs = firestore_service.db.collection("orders").where("status", "in", ["dispatched", "in_transit"]).stream()
+    active_deliveries = []
+    async for doc in docs:
+        active_deliveries.append(doc.to_dict())
 
     for order in active_deliveries:
         # In production: check Google Maps Routes API for ETA
