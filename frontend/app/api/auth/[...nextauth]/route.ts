@@ -28,14 +28,24 @@ export const authOptions: NextAuthOptions = {
             headers: { "Content-Type": "application/json" },
           });
 
-          const data = await res.json();
+          const raw = await res.text();
+          let data: any = null;
+          try {
+            data = raw ? JSON.parse(raw) : null;
+          } catch (parseError) {
+            console.error("Auth error: non-JSON response", {
+              status: res.status,
+              body: raw?.slice(0, 200),
+            });
+          }
 
-          if (res.ok && data.access_token) {
+          if (res.ok && data?.access_token) {
             // Fetch user info with the token
             const userRes = await fetch(`${serverApiUrl}/api/auth/me`, {
               headers: { "Authorization": `Bearer ${data.access_token}` },
             });
-            const userData = await userRes.json();
+            const userRaw = await userRes.text();
+            const userData = userRaw ? JSON.parse(userRaw) : null;
             
             if (userRes.ok) {
               return {

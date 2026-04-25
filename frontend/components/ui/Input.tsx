@@ -17,40 +17,43 @@ export default function Input({
   ...props
 }: InputProps) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
+  const errorId = error ? `${inputId}-error` : undefined;
+  const helperId = helperText ? `${inputId}-helper` : undefined;
+  const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
   return (
-    <div className="space-y-1.5">
+    <div className="input-group">
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-brand-700"
+          className="input-label"
         >
           {label}
         </label>
       )}
-      <div className="relative">
+      <div className="input-wrapper">
         {icon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+          <span className="input-icon">
             {icon}
           </span>
         )}
         <input
           id={inputId}
-          className={`
-            w-full px-4 py-2.5 rounded-chip border border-divider bg-white text-brand-800
-            placeholder:text-muted/60 text-sm
-            focus:border-brand-600 focus:ring-2 focus:ring-brand-600/10 focus:outline-none
-            transition-all duration-200
-            ${icon ? "pl-10" : ""}
-            ${error ? "border-error focus:border-error focus:ring-error/10" : ""}
-            ${className}
-          `}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
+          className={`input-field ${icon ? "input-field--with-icon" : ""} ${error ? "input-field--error" : ""} ${className}`}
           {...props}
         />
       </div>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && (
+        <p id={errorId} className="input-error">
+          {error}
+        </p>
+      )}
       {helperText && !error && (
-        <p className="text-xs text-muted">{helperText}</p>
+        <p id={helperId} className="input-helper">
+          {helperText}
+        </p>
       )}
     </div>
   );
@@ -71,26 +74,23 @@ export function Select({
   ...props
 }: SelectProps) {
   const selectId = id || label?.toLowerCase().replace(/\s+/g, "-");
+  const errorId = error ? `${selectId}-error` : undefined;
 
   return (
-    <div className="space-y-1.5">
+    <div className="input-group">
       {label && (
         <label
           htmlFor={selectId}
-          className="block text-sm font-medium text-brand-700"
+          className="input-label"
         >
           {label}
         </label>
       )}
       <select
         id={selectId}
-        className={`
-          w-full px-4 py-2.5 rounded-chip border border-divider bg-white text-brand-800
-          text-sm focus:border-brand-600 focus:ring-2 focus:ring-brand-600/10 focus:outline-none
-          transition-all duration-200 cursor-pointer
-          ${error ? "border-error" : ""}
-          ${className}
-        `}
+        aria-invalid={Boolean(error)}
+        aria-describedby={errorId}
+        className={`input-field form-select ${error ? "input-field--error" : ""} ${className}`}
         {...props}
       >
         {options.map((opt) => (
@@ -99,7 +99,11 @@ export function Select({
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && (
+        <p id={errorId} className="input-error">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

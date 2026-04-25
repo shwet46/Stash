@@ -42,7 +42,7 @@ export default function HowItWorksPage() {
              {[
                { icon: <Phone size={32} />, step: "Step 01", title: "Operator places a call", desc: "No internet needed. The godown operator calls the Stash number and speaks in their local language. They report stock arrivals, shipments, or tasks." },
                { icon: <Cpu size={32} />, step: "Step 02", title: "Gemini AI extracts intent", desc: "Our Vertex AI pipeline transcribes the audio and extracts structured data—products, quantities, units, and dates—with 99%+ accuracy." },
-               { icon: <Database size={32} />, step: "Step 03", title: "Real-time Dashboard Sync", desc: "The extracted data instantly updates the PostgreSQL and Firestore databases, alerting the owner and adjusting stock levels globally." }
+               { icon: <Database size={32} />, step: "Step 03", title: "Real-time Dashboard Sync", desc: "The extracted data instantly updates the Firestore and BigQuery databases, alerting the owner and adjusting stock levels globally." }
              ].map((s, i) => (
                <motion.div 
                  key={i}

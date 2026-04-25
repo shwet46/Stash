@@ -43,7 +43,7 @@ export default function TechStackPage() {
                { icon: <Cpu />, name: "Gemini 3.0 Flash", desc: "Our primary LLM for real-time multilingual audio transcription and intent extraction. Optimized for speed and accuracy in logistics context." },
                { icon: <Cloud />, name: "Vertex AI", desc: "Infrastructure for deploying custom predictive models for stockout forecasting and disruption risk analysis." },
                { icon: <Phone />, name: "Twilio Programmable Voice", desc: "Reliable telephony gateway handling inbound and outbound calls from even the most remote regions in India." },
-               { icon: <Database />, name: "PostgreSQL + Firestore", desc: "Hybrid database architecture for structured relational data and real-time operational state synchronization." }
+               { icon: <Database />, name: "Google Firestore + BigQuery", desc: "NoSQL document storage for real-time state sync and BigQuery for large-scale historical analytics and reporting." }
              ].map((tech, i) => (
                <motion.div 
                  key={i}

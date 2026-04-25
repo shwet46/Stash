@@ -15,7 +15,7 @@ const techCategories = [
     title: "Backend",
     items: [
       { name: "FastAPI", desc: "Async Python" },
-      { name: "SQLAlchemy v2", desc: "Async ORM" },
+      { name: "uv", desc: "Package Management" },
       { name: "Celery", desc: "Task Queue" },
       { name: "Redis", desc: "Caching" },
     ],
@@ -33,7 +33,7 @@ const techCategories = [
     title: "Cloud",
     items: [
       { name: "Cloud Run", desc: "Backend Hosting" },
-      { name: "Cloud SQL", desc: "PostgreSQL 16" },
+      { name: "Firestore", desc: "Real-time NoSQL" },
       { name: "BigQuery", desc: "Data Warehouse" },
       { name: "Pub/Sub", desc: "Event Streaming" },
     ],

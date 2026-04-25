@@ -59,10 +59,10 @@ export default function HowItWorksSection() {
               const isEven = i % 2 === 0;
               return (
                 <motion.div
-                  initial={{ opacity: 0, x: isEven ? -50 : 50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
                   key={i}
                   style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: isEven ? 'flex-start' : 'flex-end' }}
                 >
@@ -79,8 +79,8 @@ export default function HowItWorksSection() {
                     style={{ width: '42%', padding: '2rem', borderRadius: '1.5rem' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-                      <div style={{ width: '3rem', height: '3rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                        <Icon size={24} />
+                      <div style={{ width: '3rem', height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-brand-600)' }}>
+                        <Icon size={32} />
                       </div>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-brand-900)' }}>
                         {step.title}

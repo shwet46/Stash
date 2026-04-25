@@ -15,18 +15,24 @@ const statusConfig: Record<string, { variant: "warning" | "default" | "success" 
 
 export default function DeliveriesPage() {
   const { data: session } = useSession();
+  const accessToken = (session?.user as any)?.accessToken as string | undefined;
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadDeliveries = async () => {
     try {
       setLoading(true);
-      const data = await fetchDeliveries();
-      setDeliveries(data);
-      if (data.length > 0) setSelectedDelivery(data[0]);
+      setError(null);
+      const data = await fetchDeliveries(accessToken);
+      const list = Array.isArray(data) ? data : [];
+      setDeliveries(list);
+      if (list.length > 0) setSelectedDelivery(list[0]);
+      if (list.length === 0) setSelectedDelivery(null);
     } catch (error) {
       console.error("Failed to fetch deliveries:", error);
+      setError(error instanceof Error ? error.message : "Failed to fetch deliveries");
     } finally {
       setLoading(false);
     }
@@ -34,7 +40,7 @@ export default function DeliveriesPage() {
 
   useEffect(() => {
     loadDeliveries();
-  }, []);
+  }, [accessToken]);
 
   const activeCount = deliveries.filter(d => d.status !== 'delivered').length;
   const transitCount = deliveries.filter(d => d.status === 'in_transit').length;
@@ -106,6 +112,20 @@ export default function DeliveriesPage() {
 
            {/* Placeholder for real map */}
            <div style={{ width: '100%', height: '100%', backgroundColor: '#f0f0f0', backgroundImage: 'url("/delivery_map_tracking_1776958713356.png")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+              {error && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.8)' }}>
+                  <div style={{ padding: '1rem 1.5rem', borderRadius: '0.75rem', border: '1px solid var(--color-divider)', background: 'white', color: 'var(--color-error)', fontSize: '0.875rem', fontWeight: 600 }}>
+                    {error}
+                  </div>
+                </div>
+              )}
+              {!error && !selectedDelivery && !loading && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)' }}>
+                  <div style={{ padding: '1rem 1.5rem', borderRadius: '0.75rem', border: '1px solid var(--color-divider)', background: 'white', color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 600 }}>
+                    No deliveries available yet.
+                  </div>
+                </div>
+              )}
               {/* Overlay pulse for current location */}
               {selectedDelivery && (
                 <div style={{ position: 'absolute', top: '40%', left: '30%', transform: 'translate(-50%, -50%)' }}>
@@ -119,10 +139,15 @@ export default function DeliveriesPage() {
         </div>
 
         {/* Sidebar List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-           <div className="dashboard-card" style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
+        <div className="deliveries-panel">
+           <div className="dashboard-card deliveries-panel__list">
               <h3 className="dashboard-card-title mb-4">Shipments</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="deliveries-panel__items">
+                {!loading && deliveries.length === 0 && (
+                  <div className="deliveries-panel__empty">
+                    No shipments found. Add delivery updates to see them here.
+                  </div>
+                )}
                 {deliveries.map((del) => {
                   const isActive = selectedDelivery?.id === del.id;
                   const cfg = statusConfig[del.status] || statusConfig.pending;
@@ -130,25 +155,18 @@ export default function DeliveriesPage() {
                     <div 
                       key={del.id} 
                       onClick={() => setSelectedDelivery(del)}
-                      style={{ 
-                        padding: '0.75rem', 
-                        borderRadius: '0.5rem', 
-                        border: isActive ? '1px solid var(--color-brand-500)' : '1px solid var(--color-divider)',
-                        backgroundColor: isActive ? 'var(--color-brand-50)' : 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
+                      className={`deliveries-panel__item ${isActive ? "deliveries-panel__item--active" : ""}`}
                     >
                       <div className="d-flex align-center justify-between mb-1">
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-brand-600)' }}>{del.id.slice(0, 8)}</span>
-                        <Badge variant={cfg.variant} dot size="xs">{cfg.label}</Badge>
+                        <span className="deliveries-panel__id">{del.id.slice(0, 8)}</span>
+                        <Badge variant={cfg.variant} dot size="sm">{cfg.label}</Badge>
                       </div>
-                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-brand-800)' }}>{del.note || "General Cargo"}</p>
-                      <div className="d-flex align-center gap-3 mt-2">
-                         <span className="d-flex align-center gap-1" style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>
+                      <p className="deliveries-panel__note">{del.note || "General Cargo"}</p>
+                      <div className="d-flex align-center gap-3 mt-2 deliveries-panel__meta">
+                         <span className="d-flex align-center gap-1 deliveries-panel__meta-item">
                             <Clock size={10} /> {new Date(del.updated_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                          </span>
-                         <span className="d-flex align-center gap-1" style={{ fontSize: '0.7rem', color: 'var(--color-muted)' }}>
+                         <span className="d-flex align-center gap-1 deliveries-panel__meta-item">
                             <Navigation size={10} /> 12km
                          </span>
                       </div>

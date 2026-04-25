@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { LuWarehouse as Warehouse } from 'react-icons/lu';
+import StashIcon from "./StashIcon";
+
 
 export default function Footer() {
   return (
@@ -7,8 +8,8 @@ export default function Footer() {
       <div className="container">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', textDecoration: 'none' }}>
-            <div style={{ width: '2.25rem', height: '2.25rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Warehouse size={20} style={{ color: 'white' }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <StashIcon size={24} style={{ color: 'var(--color-brand-600)' }} />
             </div>
             <span className="notranslate" translate="no" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-brand-700)', letterSpacing: '-0.025em' }}>
               Stash
@@ -16,7 +17,7 @@ export default function Footer() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-brand-900)', margin: 0 }}>
-              Made with ❤️ by <span style={{ color: 'var(--color-brand-600)', fontWeight: 700 }}>Team Nerds</span>
+              Made with <span style={{ color: '#ff0000' }}>❤︎</span> by <span style={{ color: 'var(--color-brand-600)', fontWeight: 700 }}>Team NERDS</span>
             </p>
           </div>
         </div>

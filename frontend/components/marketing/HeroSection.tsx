@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
 import Button from "../ui/Button";
-import { LuPhone as Phone, LuWarehouse as Warehouse, LuArrowRight as ArrowRight, LuMic as Mic } from 'react-icons/lu';
+import { LuPhone as Phone, LuArrowRight as ArrowRight, LuMic as Mic } from 'react-icons/lu';
+import StashIcon from "../shared/StashIcon";
+
 import { motion } from "framer-motion";
 
 const stats = [
@@ -13,10 +15,10 @@ const stats = [
 
 export default function HeroSection() {
   return (
-    <section className="hero-section bg-gradient-mesh" id="hero-section" style={{ minHeight: '90vh', display: 'flex', alignItems: 'center' }}>
-      <div className="container relative">
+    <section className="hero-section bg-gradient-mesh landing-hero" id="hero-section">
+      <div className="container hero-container">
         {/* Decorative elements */}
-        <div style={{ position: 'absolute', top: '-10%', right: '-5%', width: '30rem', height: '30rem', background: 'radial-gradient(circle, rgba(193, 132, 85, 0.15) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(60px)', zIndex: 0 }} />
+        <div className="hero-orb" />
         
         <div className="hero-grid" style={{ position: 'relative', zIndex: 1 }}>
           {/* Left content */}
@@ -25,7 +27,7 @@ export default function HeroSection() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <div className="hero-badge glass-dark" style={{ border: '1px solid var(--color-brand-200)', color: 'var(--color-brand-800)' }}>
+            <div className="hero-badge glass-dark hero-badge--accent">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ display: 'flex', width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: 'var(--color-success)', animation: 'pulse 2s infinite' }} />
                 Voice-First AI Platform
@@ -55,13 +57,13 @@ export default function HeroSection() {
               With Just Your Voice
             </h1>
 
-            <p className="hero-desc" style={{ fontSize: '1.25rem', marginBottom: '2.5rem' }}>
-              The future of supply chain is verbal. Speak in 
+            <p className="hero-desc hero-desc--lead">
+              Speak in 
               <span style={{ color: 'var(--color-brand-700)', fontWeight: 600 }}> Hindi, English, or Hinglish</span>. 
-              No complex apps. Just talk to Stash and let AI handle the rest.
+              Just talk to <span className="notranslate" translate="no">Stash</span> and let AI handle the rest.
             </p>
 
-            <div className="hero-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center' }}>
+            <div className="hero-actions">
               <Link href="/dashboard">
                 <Button size="lg" icon={<ArrowRight size={20} />}>
                   Launch Dashboard
@@ -75,15 +77,14 @@ export default function HeroSection() {
             </div>
 
             {/* Stats row */}
-            <div className="hero-stats" style={{ marginTop: '4rem' }}>
+            <div className="hero-stats hero-stats--raised">
               {stats.map((stat, index) => (
                 <motion.div
                   key={stat.label}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + index * 0.1 }}
-                  className="stat-card glass"
-                  style={{ border: '1px solid var(--color-brand-100)' }}
+                  className="stat-card glass stat-card--soft"
                 >
                   <div className="stat-val text-gradient">
                     {stat.value}
@@ -106,8 +107,8 @@ export default function HeroSection() {
               <div className="glass" style={{ position: 'absolute', inset: '0', borderRadius: '1.5rem', padding: '2rem', border: '1px solid white', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '3.5rem', height: '3.5rem', backgroundColor: 'var(--color-brand-600)', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(179, 107, 65, 0.2)' }}>
-                      <Warehouse size={28} style={{ color: 'white' }} />
+                    <div style={{ width: '3.5rem', height: '3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <StashIcon size={40} style={{ color: 'var(--color-brand-600)' }} />
                     </div>
                     <div>
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-brand-900)' }}>

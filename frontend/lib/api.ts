@@ -142,12 +142,17 @@ export async function generateInvoice(orderId: string) {
 // ─────────────────────────────────────────
 // Deliveries
 // ─────────────────────────────────────────
-export async function fetchDeliveries() {
+export async function fetchDeliveries(accessToken?: string) {
+  if (accessToken) {
+    return apiFetch("/api/delivery", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  }
   return apiFetch("/api/delivery");
 }
 
 // ─────────────────────────────────────────
-// Role-Specific Dashboard Data (PostgreSQL + Firestore)
+// Role-Specific Dashboard Data (Firestore + BigQuery)
 // ─────────────────────────────────────────
 export type DashboardRole = "admin" | "worker";
 

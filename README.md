@@ -8,8 +8,8 @@ Stash is a next-generation supply chain management platform specifically enginee
 
 - **Frontend**: Next.js 15 (App Router) with custom CSS and Framer Motion for a premium, responsive UI.
 - **Backend**: Python 3.12 (FastAPI) utilizing `uv` for lightning-fast dependency management.
-- **Database**: PostgreSQL (with PostGIS) for relational data and Firestore for real-time mirrors.
-- **AI Engine**: Google Gemini 1.5 Flash for NLU (Natural Language Understanding) and intent extraction.
+- **Database**: Google Firestore for real-time operational data and Google BigQuery for historical analytics.
+- **AI Engine**: Google Gemini 3.0 Flash for NLU (Natural Language Understanding) and intent extraction.
 - **Voice Stack**: Google Speech-to-Text v2, Text-to-Speech, and Twilio for cellular integration.
 
 ---
@@ -26,7 +26,7 @@ cp .env.example .env
 > Open `.env` and fill in your API keys for Google AI, Twilio, and Telegram to enable full functionality.
 
 ### 2. Run via Docker (Recommended)
-The easiest way to orchestrate all services including Postgres, Redis, and the AI backend.
+The easiest way to orchestrate all services including Redis and the AI backend.
 ```bash
 docker-compose up --build
 ```
@@ -43,7 +43,7 @@ If you prefer to run services natively for faster iteration:
 ### Prerequisites
 - **Python 3.12+** (Install `uv`: `pip install uv`)
 - **Node.js 20+** (Install `pnpm` or `npm`)
-- **PostgreSQL 16** & **Redis 7**
+- **Redis 7** (For task queuing and caching)
 
 ### Backend Setup
 ```bash
@@ -75,7 +75,7 @@ docker-compose exec backend uv run python app/db/seed_run.py
 cd backend
 uv run python app/db/seed_run.py
 ```
-*Note: This script seeds PostgreSQL and attempts to mirror data to Firestore if credentials are provided.*
+*Note: This script seeds Google Firestore with operational data and prepares BigQuery schemas for analytics.*
 
 ---
 
