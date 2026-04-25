@@ -18,13 +18,13 @@ export default function FeaturesPage() {
             >
               Enterprise Capabilities
             </motion.span>
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--color-brand-800)', marginTop: '1rem', lineHeight: 1.1 }}
             >
               Everything you need to <span style={{ color: '#4285F4' }}>digitize your godown.</span>
-            </h1 >
+            </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
