@@ -7,18 +7,18 @@ interface TableProps {
 
 export function Table({ children, className = "" }: TableProps) {
   return (
-    <div className={`overflow-x-auto rounded-card border border-divider ${className}`}>
-      <table className="w-full text-sm">{children}</table>
+    <div className={`dashboard-table-wrapper ${className}`}>
+      <table className="dashboard-table">{children}</table>
     </div>
   );
 }
 
 export function TableHeader({ children }: { children: React.ReactNode }) {
-  return <thead className="bg-surface">{children}</thead>;
+  return <thead>{children}</thead>;
 }
 
 export function TableBody({ children }: { children: React.ReactNode }) {
-  return <tbody className="divide-y divide-divider">{children}</tbody>;
+  return <tbody>{children}</tbody>;
 }
 
 export function TableRow({
@@ -32,7 +32,7 @@ export function TableRow({
 }) {
   return (
     <tr
-      className={`hover:bg-brand-50 transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
+      className={`${onClick ? "cursor-pointer" : ""} ${className}`}
       onClick={onClick}
     >
       {children}
@@ -48,11 +48,7 @@ export function TableHead({
   className?: string;
 }) {
   return (
-    <th
-      className={`px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider ${className}`}
-    >
-      {children}
-    </th>
+    <th className={className}>{children}</th>
   );
 }
 
@@ -64,6 +60,6 @@ export function TableCell({
   className?: string;
 }) {
   return (
-    <td className={`px-4 py-3 text-brand-800 ${className}`}>{children}</td>
+    <td className={className}>{children}</td>
   );
 }

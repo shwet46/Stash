@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import logging
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
@@ -10,6 +11,7 @@ from app.services.firestore_service import firestore_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+logger = logging.getLogger(__name__)
 
 
 def get_current_user_phone(token: str = Depends(oauth2_scheme)) -> str:
@@ -30,13 +32,17 @@ def get_current_user_phone(token: str = Depends(oauth2_scheme)) -> str:
 
 
 async def _get_user_by_phone(phone: str):
-    if not firestore_service.is_enabled:
+    if not firestore_service.is_enabled or not firestore_service.db:
         return None
-    docs = firestore_service.db.collection("users").where("phone", "==", phone).limit(1).stream()
-    async for doc in docs:
-        d = doc.to_dict()
-        d["id"] = doc.id
-        return d
+    try:
+        docs = firestore_service.db.collection("users").where("phone", "==", phone).limit(1).stream()
+        async for doc in docs:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            return d
+    except Exception as exc:
+        logger.warning("Failed fetching user from Firestore: %s", exc)
+        return None
     return None
 
 
@@ -75,6 +81,8 @@ async def signup(user_in: UserCreate):
 
 @router.post("/login", response_model=Token)
 async def login(user_in: UserLogin):
+    if not firestore_service.is_enabled:
+        raise HTTPException(status_code=503, detail="Auth unavailable: Firestore disabled")
     user = await _get_user_by_phone(user_in.phone)
     if not user or not verify_password(user_in.password, user.get("hashed_password", "")):
         raise HTTPException(

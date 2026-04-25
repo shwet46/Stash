@@ -45,7 +45,7 @@ export default function SDGSection() {
             Aligned with UN Development Goals
           </h2>
           <p className="section-desc">
-            Stash is a platform for inclusive economic growth and sustainable supply chains.
+            <span className="notranslate" translate="no">Stash</span> is a platform for inclusive economic growth and sustainable supply chains.
           </p>
         </div>
 

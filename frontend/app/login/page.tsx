@@ -13,6 +13,8 @@ import {
   LuEyeOff as EyeOffIcon,
   LuTriangleAlert as AlertIcon
 } from "react-icons/lu";
+import StashIcon from "@/components/shared/StashIcon";
+
 import Button from "@/components/ui/Button";
 import Link from "next/link";
 
@@ -22,13 +24,32 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState({ phone: false, password: false });
+  const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
+
+  const isPhoneValid = /^\d{10}$/.test(phone);
+  const isPasswordValid = password.length >= 6;
+  const phoneError = !phone
+    ? "Phone number is required."
+    : !isPhoneValid
+    ? "Enter a valid 10-digit phone number."
+    : "";
+  const passwordError = !password
+    ? "Password is required."
+    : !isPasswordValid
+    ? "Password must be at least 6 characters."
+    : "";
+  const showPhoneError = (touched.phone || submitted) && Boolean(phoneError);
+  const showPasswordError = (touched.password || submitted) && Boolean(passwordError);
+  const isFormValid = isPhoneValid && isPasswordValid;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (phone.length < 3 || password.length < 4) {
-      setError("Please check your credentials.");
+    setSubmitted(true);
+    if (!isFormValid) {
+      setError("Please fix the highlighted fields.");
       return;
     }
     
@@ -59,7 +80,7 @@ export default function LoginPage() {
         <div className="auth-left-content">
           <div className="auth-brand">
             <div className="auth-brand-icon">
-              <Warehouse size={32} />
+              <StashIcon size={40} />
             </div>
             <span className="auth-brand-text">STASH</span>
           </div>
@@ -117,21 +138,36 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             <div className="input-group">
               <label className="input-label">
-                Username or Phone
+                Phone Number
               </label>
               <div className="input-wrapper">
                 <div className="input-icon">
                   <PhoneIcon size={16} />
                 </div>
                 <input
-                  type="text"
+                  type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Enter your ID"
-                  className="input-field"
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
+                  placeholder="10-digit phone number"
+                  className={`input-field input-field--with-icon ${showPhoneError ? "input-field--error" : ""}`}
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
+                  aria-invalid={showPhoneError}
+                  aria-describedby={showPhoneError ? "login-phone-error" : "login-phone-help"}
                   required
                 />
               </div>
+              {showPhoneError ? (
+                <p className="input-error" id="login-phone-error">
+                  {phoneError}
+                </p>
+              ) : (
+                <p className="input-helper" id="login-phone-help">
+                  Use the mobile number linked to your account.
+                </p>
+              )}
             </div>
 
             <div className="input-group">
@@ -151,8 +187,12 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
                   placeholder="••••••••"
-                  className="input-field has-right-icon"
+                  className={`input-field input-field--with-icon has-right-icon ${showPasswordError ? "input-field--error" : ""}`}
+                  autoComplete="current-password"
+                  aria-invalid={showPasswordError}
+                  aria-describedby={showPasswordError ? "login-password-error" : "login-password-help"}
                   required
                 />
                 <button
@@ -163,11 +203,20 @@ export default function LoginPage() {
                   {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                 </button>
               </div>
+              {showPasswordError ? (
+                <p className="input-error" id="login-password-error">
+                  {passwordError}
+                </p>
+              ) : (
+                <p className="input-helper" id="login-password-help">
+                  Minimum 6 characters.
+                </p>
+              )}
             </div>
 
             <button 
               type="submit" 
-              disabled={loading} 
+              disabled={loading || !isFormValid} 
               className="auth-submit-btn"
             >
               {loading ? "Verifying..." : "Sign In"}

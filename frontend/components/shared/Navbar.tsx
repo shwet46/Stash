@@ -1,10 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { LuMenu as Menu, LuX as X, LuWarehouse as Warehouse, LuArrowRight as ArrowRight } from 'react-icons/lu';
+import { LuMenu as Menu, LuX as X, LuArrowRight as ArrowRight } from 'react-icons/lu';
+
 import Button from "../ui/Button";
 import { useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import LanguageSelector from "./LanguageSelector";
+import StashIcon from "./StashIcon";
+
 
 const navLinks = [
   { label: "Features", href: "/features" },
@@ -40,8 +44,8 @@ export default function Navbar() {
         <div className="navbar-inner" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <Link href="/" className="nav-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-            <div className="nav-brand-icon" style={{ backgroundColor: 'var(--color-brand-600)', borderRadius: '0.75rem', width: '2.75rem', height: '2.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(179, 107, 65, 0.2)' }}>
-              <Warehouse size={24} style={{ color: 'white' }} />
+            <div className="nav-brand-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.5rem', height: '2.5rem' }}>
+              <StashIcon size={32} style={{ color: 'var(--color-brand-600)' }} />
             </div>
             <span className="nav-brand-text notranslate" translate="no" style={{ fontSize: '1.625rem', fontWeight: 900, color: 'var(--color-brand-800)', letterSpacing: '-0.03em' }}>
               Stash
@@ -59,6 +63,7 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <LanguageSelector />
             {status === "authenticated" ? (
               <>
                 <Link href="/dashboard">
@@ -112,7 +117,12 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <div style={{ marginTop: '1rem', paddingTop: '1.5rem', borderTop: '2px solid var(--color-brand-50)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              <div style={{ padding: '0.5rem 1rem' }}>
+                <LanguageSelector />
+              </div>
+
+              <div style={{ marginTop: '0.5rem', paddingTop: '1.5rem', borderTop: '2px solid var(--color-brand-50)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {status === "authenticated" ? (
                   <>
                     <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
