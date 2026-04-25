@@ -262,7 +262,7 @@ export interface WorkerTask {
 export interface WorkerStats {
   total_tasks: number;
   pending_tasks: number;
-  voice_commands_today: number;
+  voice_calls_today: number;
   active_deliveries: number;
   low_stock_count: number;
 }

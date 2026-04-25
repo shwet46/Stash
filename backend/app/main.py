@@ -11,6 +11,7 @@ from app.api.orders import router as orders_router
 from app.api.suppliers import router as suppliers_router
 from app.api.billing import router as billing_router
 from app.api.analytics import router as analytics_router
+from app.api.analytics_export import router as analytics_export_router
 from app.api.delivery import router as delivery_router
 from app.api.telegram import router as telegram_router
 from app.api.auth import router as auth_router
@@ -70,6 +71,7 @@ app.include_router(orders_router)
 app.include_router(suppliers_router)
 app.include_router(billing_router)
 app.include_router(analytics_router)
+app.include_router(analytics_export_router)
 app.include_router(delivery_router)
 app.include_router(telegram_router)
 app.include_router(auth_router)

@@ -6,9 +6,9 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import { fetchDeliveries } from "@/lib/api";
 
-const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "info"; label: string }> = {
+const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "error" | "outline"; label: string }> = {
   dispatched: { variant: "warning", label: "Dispatched" },
-  in_transit: { variant: "info", label: "In Transit" },
+  in_transit: { variant: "default", label: "In Transit" },
   delivered: { variant: "success", label: "Delivered" },
   pending: { variant: "default", label: "Pending" },
 };

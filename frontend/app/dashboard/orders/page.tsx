@@ -10,11 +10,11 @@ import Modal from "@/components/ui/Modal";
 
 import { fetchOrders, RecentOrder, createOrder, fetchInventory } from "@/lib/api";
 
-const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "info"; label: string }> = {
+const statusConfig: Record<string, { variant: "warning" | "default" | "success" | "error" | "outline"; label: string }> = {
   pending: { variant: "warning", label: "Pending" },
-  dispatched: { variant: "info", label: "Dispatched" },
+  dispatched: { variant: "default", label: "Dispatched" },
   delivered: { variant: "success", label: "Delivered" },
-  in_transit: { variant: "info", label: "In Transit" },
+  in_transit: { variant: "default", label: "In Transit" },
 };
 
 export default function OrdersPage() {
