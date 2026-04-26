@@ -168,6 +168,14 @@ export default function WorkerDashboardView() {
               Speak the item name, quantity, lot number, and expiry. Stash logs it automatically.
             </p>
             
+            {voiceFeedback && (
+              <div style={{ padding: "12px 16px", background: "var(--color-brand-50)", borderRadius: 12, border: "1px solid var(--color-brand-200)", marginBottom: 16 }}>
+                <p style={{ margin: 0, fontWeight: 500, color: "var(--color-brand-800)", fontSize: 15, textAlign: "center" }}>
+                  {voiceFeedback}
+                </p>
+              </div>
+            )}
+
             <div className="worker-dashboard__mic-wrap">
                <button 
                   onClick={voiceActive ? stopRecording : startRecording}
@@ -192,7 +200,6 @@ export default function WorkerDashboardView() {
                  <span className="worker-dashboard__mic-idle">Tap to start recording</span>
                )}
             </div>
-            {voiceFeedback && <p className="worker-dashboard__mic-feedback">{voiceFeedback}</p>}
 
             {/* Recent Voice Entries */}
             <div className="worker-dashboard__recent">

@@ -160,21 +160,24 @@ export async function fetchDeliveryTimeline(orderId: string) {
 // ─────────────────────────────────────────
 export type DashboardRole = "admin" | "worker";
 
-export async function fetchAdminDashboard() {
-  return apiFetch<AdminDashboardData>("/api/dashboard/admin");
+export async function fetchAdminDashboard(userName?: string) {
+  const url = userName ? `/api/dashboard/admin?user_name=${encodeURIComponent(userName)}` : "/api/dashboard/admin";
+  return apiFetch<AdminDashboardData>(url);
 }
 
-export async function fetchWorkerDashboard() {
-  return apiFetch<WorkerDashboardData>("/api/dashboard/worker");
+export async function fetchWorkerDashboard(userName?: string) {
+  const url = userName ? `/api/dashboard/worker?user_name=${encodeURIComponent(userName)}` : "/api/dashboard/worker";
+  return apiFetch<WorkerDashboardData>(url);
 }
 
 export async function fetchDashboardSummary() {
   return apiFetch<DashboardSummary>("/api/dashboard/summary");
 }
 
-export async function fetchRecentActivities(role?: DashboardRole, limit: number = 12) {
+export async function fetchRecentActivities(role?: DashboardRole, userName?: string, limit: number = 12) {
   const params = new URLSearchParams();
   if (role) params.set("role", role);
+  if (userName) params.set("user_name", userName);
   params.set("limit", String(limit));
   return apiFetch<RecentActivityList>(`/api/dashboard/activities?${params.toString()}`);
 }
@@ -337,10 +340,15 @@ export function subscribeToAlerts(onAlert: (alert: Record<string, unknown>) => v
 export function subscribeToDashboard<T>(
   role: DashboardRole,
   onData: (data: T) => void,
-  onError?: (err: Event) => void
+  onError?: (err: Event) => void,
+  userName?: string
 ): () => void {
   const token = getToken();
-  const url = `${API_BASE}/api/dashboard/stream/${role}${token ? `?token=${token}` : ""}`;
+  const params = new URLSearchParams();
+  if (token) params.set("token", token);
+  if (userName) params.set("user_name", userName);
+  const queryString = params.toString() ? `?${params.toString()}` : "";
+  const url = `${API_BASE}/api/dashboard/stream/${role}${queryString}`;
   const es = new EventSource(url);
   es.onmessage = (e) => {
     try {
