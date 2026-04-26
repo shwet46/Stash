@@ -117,7 +117,7 @@ export default function Sidebar() {
           <div className="sidebar__lang-wrapper">
             <span className={`sidebar__lang-label ${lang === "en" ? "sidebar__lang-label--active" : ""}`}>EN</span>
             <button 
-              className={`sidebar__lang-switch ${lang === "hi" ? "sidebar__lang-switch--active" : ""}`}
+              className="sidebar__lang-switch"
               onClick={() => setLang(lang === "en" ? "hi" : "en")}
               aria-label="Toggle language"
             >
@@ -243,7 +243,7 @@ export default function Sidebar() {
                 {userName}
               </h3>
               <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', margin: 0 }}>
-                {userEmail}
+                {t(userEmail)}
               </p>
             </div>
           </div>
