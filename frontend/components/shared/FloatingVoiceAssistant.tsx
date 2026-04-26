@@ -11,7 +11,7 @@ export default function FloatingVoiceAssistant() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const { data: session } = useSession();
-  const recorderOptions = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+  const recorderOptions = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
     ? { mimeType: "audio/webm;codecs=opus" }
     : undefined;
 

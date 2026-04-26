@@ -42,7 +42,7 @@ export default function WorkerDashboardView() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const recorderOptions = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+  const recorderOptions = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
     ? { mimeType: "audio/webm;codecs=opus" }
     : undefined;
 
