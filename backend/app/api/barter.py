@@ -260,6 +260,25 @@ async def chat(req: ChatRequest):
             except Exception:
                 pass
 
+            # Auto-create order if accepted
+            if neg_result.get("decision") in ("accept", "accept_conditional"):
+                from app.api.orders import create_order
+                final_price = neg_result.get("counter_price") or offered_price
+                final_quantity = neg_result.get("minimum_quantity") or quantity
+                
+                order_data = {
+                    "buyer_name": buyer_name,
+                    "phone": "Barter AI",
+                    "product_name": data.get("product", product).title(),
+                    "unit": unit,
+                    "quantity": final_quantity,
+                    "total_amount": float(final_price * final_quantity),
+                }
+                try:
+                    await create_order(order_data)
+                except Exception as e:
+                    print(f"Failed to auto-create order: {e}")
+
             reply = neg_result.get("message", "")
             negotiation_result = {**neg_result, "record_id": record_id, "floor_price": floor_price, "market_rate": market_rate, "tier": tier}
             done = True
