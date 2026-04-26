@@ -1795,10 +1795,6 @@ html {
   transition: background-color 0.2s ease;
 }
 
-.sidebar__lang-switch--active {
-  background-color: var(--color-brand-600);
-}
-
 .sidebar__lang-dot {
   width: 14px;
   height: 14px;

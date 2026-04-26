@@ -6,7 +6,6 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import SearchInput from "@/components/ui/SearchInput";
 import Modal from "@/components/ui/Modal";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 import { fetchInventory, createInventoryItem, StockItem } from "@/lib/api";
 
@@ -23,7 +22,6 @@ export default function InventoryPage() {
   const { data: session } = useSession();
   const role = ((session?.user as any)?.role || "worker").toLowerCase();
   const isWorker = role === "worker";
-  const { t } = useLanguage();
 
   // All hooks before any early returns
   const [inventory, setInventory] = useState<StockItem[]>([]);
@@ -95,23 +93,23 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="dashboard-header">
         <div>
-          <h1 className="dashboard-title">{t("Inventory")}</h1>
+          <h1 className="dashboard-title">Inventory</h1>
           <p className="dashboard-subtitle">
-            {inventory.length} {t("products across godowns")}
+            {inventory.length} products across godowns
           </p>
         </div>
         <div className="dashboard-header-right">
           <Button variant="outline" size="sm" icon={<Download size={16} />}>
-            {t("Export")}
+            Export
           </Button>
           {!isWorker && (
             <Button size="sm" icon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>
-              {t("Add Product")}
+              Add Product
             </Button>
           )}
           {isWorker && (
             <Button variant="outline" size="sm" onClick={loadInventory} icon={<RefreshCw size={16} className={loading ? "spin" : ""} />}>
-              {t("Refresh")}
+              Refresh
             </Button>
           )}
         </div>
@@ -122,8 +120,8 @@ export default function InventoryPage() {
         <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '0.75rem', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <AlertTriangle size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
           <p style={{ fontSize: '0.875rem', color: 'var(--color-brand-800)' }}>
-            <span style={{ fontWeight: 600 }}>{lowStockCount} {t("products are")}</span>{' '}
-            {isWorker ? t("Worker threshold text") : t("below stock threshold")}
+            <span style={{ fontWeight: 600 }}>{lowStockCount} products</span> are
+            below stock threshold. {isWorker ? "Please inform your supervisor." : "Auto-reorder has been triggered for critical items."}
           </p>
         </div>
       )}
@@ -132,7 +130,7 @@ export default function InventoryPage() {
       <div className="d-flex align-center gap-3" style={{ flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '240px', maxWidth: '24rem' }}>
           <SearchInput
-            placeholder={t("Search products...")}
+            placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -157,7 +155,7 @@ export default function InventoryPage() {
                   whiteSpace: 'nowrap'
                 }}
               >
-                {cat === "all" ? t("All") : t(cat)}
+                {cat === "all" ? "All" : cat}
               </button>
             ))}
           </div>
@@ -170,13 +168,13 @@ export default function InventoryPage() {
           <table className="dashboard-table">
             <thead>
               <tr>
-                <th>{t("PRODUCT")}</th>
-                <th>{t("CATEGORY")}</th>
-                <th>{t("STOCK")}</th>
-                <th>{t("THRESHOLD")}</th>
-                <th>{t("GODOWN")}</th>
-                <th>{t("LAST UPDATED")}</th>
-                <th>{t("STATUS")}</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Threshold</th>
+                <th>Godown</th>
+                <th>Last Updated</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -219,7 +217,7 @@ export default function InventoryPage() {
                     </td>
                     <td>
                       <Badge variant={statusCfg.variant} dot size="sm">
-                        {t(statusCfg.label)}
+                        {statusCfg.label}
                       </Badge>
                     </td>
                   </tr>
@@ -228,7 +226,7 @@ export default function InventoryPage() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-muted)' }}>
-                    {t("No products found matching your search.")}
+                    No products found matching your search.
                   </td>
                 </tr>
               )}
@@ -238,7 +236,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Add Product Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t("Add New Product")} size="lg">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Product" size="lg">
         <form onSubmit={handleAddProduct} className="dashboard-modal-form">
           <p className="dashboard-modal-intro">Add inventory details to start stock tracking and low-stock alerts.</p>
 
@@ -320,9 +318,9 @@ export default function InventoryPage() {
           </div>
 
           <div className="dashboard-modal-actions">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>{t("Cancel")}</Button>
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Adding..." : t("Add Product")}
+              {isSubmitting ? "Adding..." : "Add Product"}
             </Button>
           </div>
         </form>
