@@ -26,6 +26,7 @@ import {
   LuTrendingUp as Forecast,
 } from "react-icons/lu";
 import StashIcon from "../shared/StashIcon";
+import Modal from "../ui/Modal";
 
 
 type UserRole = "admin" | "worker";
@@ -74,6 +75,10 @@ export default function Sidebar() {
   const role = (rawRole === "admin" || rawRole === "owner" ? "admin" : "worker") as UserRole;
   const roleCfg = roleConfig[role] || roleConfig.worker;
   const userName = (session?.user as any)?.name || "User";
+  const userEmail = session?.user?.email || "No email available";
+  const userPhone = (session?.user as any)?.phone || "+91 XXXXXXXXXX";
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const { data: dashData, isRealtime } = useDashboardData(role);
 
@@ -109,7 +114,12 @@ export default function Sidebar() {
       </div>
 
       {/* User Profile Section */}
-      <div className={`sidebar__profile ${collapsed ? "sidebar__profile--collapsed" : ""}`}>
+      <div 
+        className={`sidebar__profile ${collapsed ? "sidebar__profile--collapsed" : ""}`}
+        onClick={() => setIsProfileModalOpen(true)}
+        style={{ cursor: "pointer" }}
+        title="View Profile Details"
+      >
         <div className="sidebar__avatar">
           {userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
         </div>
@@ -190,6 +200,64 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <Modal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+        title="Profile Details"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: '4rem', 
+              height: '4rem', 
+              backgroundColor: 'var(--color-brand-100)', 
+              color: 'var(--color-brand-700)', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold' 
+            }}>
+              {userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-brand-800)', margin: 0 }}>
+                {userName}
+              </h3>
+              <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', margin: 0 }}>
+                {userEmail}
+              </p>
+            </div>
+          </div>
+          
+          <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>System Role</span>
+              <span style={{ 
+                backgroundColor: roleCfg.bg, 
+                color: roleCfg.color, 
+                padding: '0.25rem 0.625rem', 
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 700 
+              }}>
+                {roleCfg.label}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>Phone</span>
+              <span style={{ color: 'var(--color-brand-700)', fontSize: '0.875rem', fontWeight: 600 }}>{userPhone}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>Account Status</span>
+              <span style={{ color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>Active</span>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </aside>
   );
 }
