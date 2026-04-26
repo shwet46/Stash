@@ -1755,8 +1755,63 @@ html {
   height: 5rem;
   display: flex;
   align-items: center;
-  padding: 0 1.5rem;
-  margin-bottom: 0.5rem;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  margin-bottom: 0;
+}
+
+.sidebar__lang-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #f9f9f9;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  border: 1px solid #eeeeee;
+}
+
+.sidebar__lang-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #999999;
+  transition: color 0.2s ease;
+}
+
+.sidebar__lang-label--active {
+  color: var(--color-brand-600);
+}
+
+.sidebar__lang-switch {
+  width: 32px;
+  height: 18px;
+  background-color: #e0e0e0;
+  border-radius: 9999px;
+  border: none;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar__lang-switch--active {
+  background-color: var(--color-brand-600);
+}
+
+.sidebar__lang-dot {
+  width: 14px;
+  height: 14px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar__lang-dot--right {
+  transform: translateX(14px);
 }
 
 .sidebar__logo--collapsed {
@@ -1803,7 +1858,7 @@ html {
 }
 
 .sidebar__profile {
-  padding: 1rem 1.25rem;
+  padding: 0.5rem 1.25rem 0.85rem 1.25rem;
   margin-bottom: 1rem;
   display: flex;
   align-items: center;

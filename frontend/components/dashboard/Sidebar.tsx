@@ -27,6 +27,7 @@ import {
 } from "react-icons/lu";
 import StashIcon from "../shared/StashIcon";
 import Modal from "../ui/Modal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 
 type UserRole = "admin" | "worker";
@@ -68,6 +69,7 @@ const roleConfig: Record<string, { label: string; color: string; bg: string }> =
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { lang, setLang, t } = useLanguage();
   const pathname = usePathname();
   const { data: session } = useSession();
   const rawRole = ((session?.user as any)?.role || "worker").toLowerCase();
@@ -107,10 +109,23 @@ export default function Sidebar() {
           {!collapsed && (
             <div className="sidebar__brand-text">
               <span className="sidebar__brand-title notranslate" translate="no">Stash</span>
-              <span className="sidebar__brand-subtitle">Voice-Native SC</span>
             </div>
           )}
         </Link>
+
+        {!collapsed && (
+          <div className="sidebar__lang-wrapper">
+            <span className={`sidebar__lang-label ${lang === "en" ? "sidebar__lang-label--active" : ""}`}>EN</span>
+            <button 
+              className={`sidebar__lang-switch ${lang === "hi" ? "sidebar__lang-switch--active" : ""}`}
+              onClick={() => setLang(lang === "en" ? "hi" : "en")}
+              aria-label="Toggle language"
+            >
+              <div className={`sidebar__lang-dot ${lang === "hi" ? "sidebar__lang-dot--right" : ""}`} />
+            </button>
+            <span className={`sidebar__lang-label ${lang === "hi" ? "sidebar__lang-label--active" : ""}`}>हि</span>
+          </div>
+        )}
       </div>
 
       {/* User Profile Section */}
@@ -131,7 +146,7 @@ export default function Sidebar() {
                 <span className="sidebar__realtime" title="Real-time connected" />
               )}
               <span className="sidebar__role" style={{ backgroundColor: roleCfg.bg, color: roleCfg.color }}>
-                {roleCfg.label}
+                {t(roleCfg.label)}
               </span>
             </div>
           </div>
@@ -147,7 +162,7 @@ export default function Sidebar() {
           return (
             <div key={section.title} className="sidebar__menu-section">
               {!collapsed && (
-                <p className="sidebar__section">{section.title}</p>
+                <p className="sidebar__section">{t(section.title)}</p>
               )}
               {filteredItems.map((item) => {
                 const Icon = item.icon;
@@ -160,7 +175,7 @@ export default function Sidebar() {
                     className={`sidebar__link ${collapsed ? "sidebar__link--collapsed" : ""} ${isActive ? "sidebar__link--active" : ""}`}
                   >
                     <Icon size={20} className="sidebar__icon" />
-                    {!collapsed && <span>{item.label}</span>}
+                    {!collapsed && <span>{t(item.label)}</span>}
                   </Link>
                 );
               })}
@@ -181,7 +196,7 @@ export default function Sidebar() {
               className={`sidebar__signout ${collapsed ? "sidebar__signout--collapsed" : ""}`}
             >
               <LogOut size={20} />
-              {!collapsed && <span>Sign Out</span>}
+              {!collapsed && <span>{t("Sign Out")}</span>}
             </button>
 
             <button
@@ -193,7 +208,7 @@ export default function Sidebar() {
               ) : (
                 <span className="sidebar__collapse-inner">
                   <ChevronLeft size={20} />
-                  <span className="sidebar__collapse-label">Collapse</span>
+                  <span className="sidebar__collapse-label">{t("Collapse")}</span>
                 </span>
               )}
             </button>
@@ -205,7 +220,7 @@ export default function Sidebar() {
       <Modal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 
-        title="Profile Details"
+        title={t("Profile Details")}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -235,7 +250,7 @@ export default function Sidebar() {
           
           <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: '1rem', marginTop: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
-              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>System Role</span>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>{t("System Role")}</span>
               <span style={{ 
                 backgroundColor: roleCfg.bg, 
                 color: roleCfg.color, 
@@ -244,16 +259,16 @@ export default function Sidebar() {
                 fontSize: '0.75rem',
                 fontWeight: 700 
               }}>
-                {roleCfg.label}
+                {t(roleCfg.label)}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
-              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>Phone</span>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>{t("Phone")}</span>
               <span style={{ color: 'var(--color-brand-700)', fontSize: '0.875rem', fontWeight: 600 }}>{userPhone}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>Account Status</span>
-              <span style={{ color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>Active</span>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>{t("Account Status")}</span>
+              <span style={{ color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>{t("Active")}</span>
             </div>
           </div>
         </div>
