@@ -87,8 +87,8 @@ async def _build_admin_stats() -> dict:
     in_transit = [d for d in deliveries if d.get("status") in ("in_transit", "dispatched")]
 
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    all_calls = await _fetch_collection("call_logs")
-    calls_today = [c for c in all_calls if c.get("created_at") and c.get("created_at") >= today_start]
+    all_calls = await _fetch_collection("voice_commands")
+    calls_today = [c for c in all_calls if c.get("created_at") and c.get("created_at") >= today_start and c.get("status") == "processed"]
 
     users = await _fetch_collection("users")
     workers = [u for u in users if u.get("role", "").lower() == "worker"]
@@ -171,7 +171,7 @@ async def _build_worker_stats(user_id: str | None = None) -> dict:
     inventory = await _fetch_collection("inventory")
     low_stock = [i for i in inventory if _stock_status(i) in ("low", "critical")]
 
-    all_calls = await _fetch_collection("call_logs")
+    all_calls = await _fetch_collection("voice_commands")
     calls = sorted(all_calls, key=lambda x: x.get("created_at") or "", reverse=True)[:5]
 
     tasks = []
@@ -224,9 +224,10 @@ async def _build_worker_stats(user_id: str | None = None) -> dict:
         "recent_calls": [
             {
                 "id": str(c.get("id")),
-                "text": c.get("transcript") or c.get("intent") or "Voice command",
+                "text": c.get("activity_summary") or c.get("response") or c.get("transcript") or c.get("intent") or "Voice command",
+                "activity_summary": c.get("activity_summary"),
                 "time": format_time(c.get("created_at")),
-                "status": "Processed" if c.get("response") else "Pending"
+                "status": "Processed" if c.get("status") == "processed" else "Pending",
             }
             for c in calls
         ],
@@ -240,6 +241,52 @@ async def _build_worker_stats(user_id: str | None = None) -> dict:
             }
             for d in active_deliveries[:3]
         ],
+        "last_updated": now.isoformat(),
+    }
+
+
+async def _build_recent_activities(role: str | None = None, limit: int = 12) -> dict:
+    now = datetime.utcnow()
+    all_calls = await _fetch_collection("voice_commands")
+    role_lower = (role or "").lower()
+
+    if role_lower in ("admin", "owner"):
+        filtered_calls = all_calls
+    elif role_lower == "worker":
+        filtered_calls = [
+            c for c in all_calls
+            if (c.get("role") or "worker").lower() == "worker" or (c.get("source") or "").lower() == "worker_dashboard"
+        ]
+    else:
+        filtered_calls = all_calls
+
+    def format_time(iso_str):
+        if not iso_str:
+            return ""
+        try:
+            return datetime.fromisoformat(iso_str).strftime("%I:%M %p")
+        except Exception:
+            return iso_str
+
+    recent = sorted(filtered_calls, key=lambda x: x.get("created_at") or "", reverse=True)[:limit]
+    items = [
+        {
+            "id": str(c.get("id")),
+            "activity": c.get("activity_summary") or c.get("response") or c.get("transcript") or c.get("intent") or "Voice activity",
+            "intent": c.get("intent"),
+            "role": c.get("role") or "worker",
+            "source": c.get("source") or "web",
+            "status": c.get("status") or "processed",
+            "time": format_time(c.get("created_at")),
+            "created_at": c.get("created_at"),
+        }
+        for c in recent
+    ]
+
+    return {
+        "role": role_lower or "worker",
+        "items": items,
+        "total": len(filtered_calls),
         "last_updated": now.isoformat(),
     }
 
@@ -277,6 +324,12 @@ async def dashboard_summary():
         "pending_payments": sum(float(b.get("total") or 0) for b in bills if b.get("status") != "paid"),
         "last_updated": datetime.utcnow().isoformat(),
     }
+
+
+@router.get("/activities")
+async def dashboard_activities(role: str | None = None, limit: int = 12):
+    """Recent voice activities for admin and worker dashboards."""
+    return await _build_recent_activities(role=role, limit=limit)
 
 
 # ─────────────────────────────────────────

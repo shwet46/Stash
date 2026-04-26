@@ -90,6 +90,9 @@ export default function SuppliersPage() {
     (sup.name || "").toLowerCase().includes(search.toLowerCase()) ||
     (sup.product || sup.product_id || "").toLowerCase().includes(search.toLowerCase())
   );
+  const activeSuppliers = suppliers.filter((s) => s.status === "active").length;
+  const primarySuppliers = suppliers.filter((s) => String(s.priority) === "1").length;
+  const avgRating = suppliers.length ? (suppliers.reduce((sum, sup) => sum + (Number(sup.rating) || 0), 0) / suppliers.length).toFixed(1) : "0.0";
 
   return (
     <div className="dashboard-wrapper">
@@ -107,6 +110,21 @@ export default function SuppliersPage() {
           <Button size="sm" icon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>
             Add Supplier
           </Button>
+        </div>
+      </div>
+
+      <div className="grid-3" style={{ marginBottom: 18 }}>
+        <div className="dashboard-card">
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-muted)' }}>Total Suppliers</p>
+          <p style={{ margin: '0.25rem 0 0', fontSize: 26, fontWeight: 800, color: 'var(--color-brand-800)' }}>{suppliers.length}</p>
+        </div>
+        <div className="dashboard-card">
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-muted)' }}>Active Suppliers</p>
+          <p style={{ margin: '0.25rem 0 0', fontSize: 26, fontWeight: 800, color: 'var(--color-brand-800)' }}>{activeSuppliers}</p>
+        </div>
+        <div className="dashboard-card">
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-muted)' }}>Avg Rating</p>
+          <p style={{ margin: '0.25rem 0 0', fontSize: 26, fontWeight: 800, color: 'var(--color-brand-800)' }}>{avgRating}</p>
         </div>
       </div>
 
@@ -129,7 +147,7 @@ export default function SuppliersPage() {
       ) : (
         <div className="grid-3">
           {filtered.map((sup) => (
-            <div key={sup.id} className="dashboard-card">
+            <div key={sup.id} className="dashboard-card" style={{ border: '1px solid var(--color-divider)', boxShadow: 'var(--shadow-card)' }}>
               <div className="d-flex align-center justify-between mb-2" style={{ alignItems: 'flex-start' }}>
                 <div>
                   <h3 style={{ fontWeight: 600, color: 'var(--color-brand-800)' }}>{sup.name}</h3>
@@ -140,7 +158,7 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
-              <div className="d-flex align-center gap-2" style={{ marginBottom: '0.75rem' }}>
+              <div className="d-flex align-center gap-2" style={{ marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                 {sup.product && <Badge variant="outline" size="sm">{sup.product}</Badge>}
                 <Badge variant={sup.priority === 1 ? "default" : "outline"} size="sm">
                   Priority {sup.priority || "—"}
@@ -162,11 +180,9 @@ export default function SuppliersPage() {
                     </span>
                   )}
                 </div>
-                {sup.last_contacted && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
-                    Last: {sup.last_contacted}
-                  </span>
-                )}
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>
+                  {sup.last_contacted ? `Last: ${sup.last_contacted}` : `Primary: ${String(sup.priority) === "1" ? "Yes" : "No"}`}
+                </span>
               </div>
             </div>
           ))}

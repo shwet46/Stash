@@ -230,6 +230,41 @@ def generate_seed_data():
             "status": bill_status,
         })
 
+    # ========== DELIVERY UPDATES ========== 
+    delivery_status_cycle = ["pending", "dispatched", "in_transit", "delivered"]
+    delivery_notes = [
+        "Loaded and dispatched from Mumbai Central Godown.",
+        "Crossing Thane checkpoint, ETA stable.",
+        "Reached highway service point for inspection.",
+        "Delivered and signed by receiver.",
+    ]
+    delivery_updates = []
+    sample_orders = orders[:18]
+    for idx, order in enumerate(sample_orders):
+        current_status = delivery_status_cycle[min(idx % len(delivery_status_cycle), len(delivery_status_cycle) - 1)]
+        base_time = datetime.utcnow() - timedelta(hours=idx * 4)
+        timeline = []
+        for step, status in enumerate(delivery_status_cycle):
+            timeline.append({
+                "status": status,
+                "note": delivery_notes[step],
+                "updated_at": (base_time - timedelta(hours=(3 - step) * 2)).isoformat(),
+            })
+
+        delivery_updates.append({
+            "id": str(uuid.uuid4()),
+            "order_id": order["id"],
+            "status": current_status,
+            "note": delivery_notes[delivery_status_cycle.index(current_status)],
+            "assigned_driver": random.choice(["Ravi", "Imran", "Sanjay", "Arjun"]),
+            "vehicle_no": f"MH12{random.randint(1000,9999)}",
+            "route": random.choice(["Mumbai → Thane", "Pune → Nashik", "Surat → Ahmedabad", "Nashik → Mumbai"]),
+            "eta": (datetime.utcnow() + timedelta(hours=random.randint(2, 18))).isoformat(),
+            "progress": random.randint(15, 95),
+            "updated_at": base_time.isoformat(),
+            "timeline": timeline,
+        })
+
     return {
         "users": users,
         "godowns": godowns,
@@ -238,6 +273,7 @@ def generate_seed_data():
         "suppliers": suppliers,
         "orders": orders,
         "bills": bills,
+        "delivery_updates": delivery_updates,
     }
 
 

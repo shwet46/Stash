@@ -78,6 +78,11 @@ export default function AdminDashboard() {
   }
 
   const stats = data?.stats;
+  const aiSummary = [
+    `${stats?.low_stock_count || 0} low-stock alerts`,
+    `${stats?.deliveries_in_transit || 0} deliveries in transit`,
+    `${stats?.voice_calls_today || 0} voice actions today`,
+  ].join(" · ");
 
   const kpis = [
     { title: "Monthly Revenue", value: `₹${(stats?.monthly_revenue || 0).toLocaleString("en-IN")}`, change: "+23%", changeType: "positive" as const, icon: IndianRupee, subtitle: "Real-time from DB" },
@@ -113,6 +118,14 @@ export default function AdminDashboard() {
             Last updated: {data?.last_updated ? new Date(data.last_updated).toLocaleTimeString() : "Just now"}
           </span>
         </div>
+      </div>
+
+      <div className="dashboard-card" style={{ marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, border: "1px solid rgba(107,66,38,0.14)", background: "linear-gradient(135deg, rgba(107,66,38,0.08), rgba(255,255,255,0.96))" }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: 1 }}>AI Summary</p>
+          <p style={{ margin: "0.25rem 0 0", fontWeight: 700, color: "var(--color-brand-800)" }}>{aiSummary}</p>
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-brand-600)", whiteSpace: "nowrap" }}>Ask the mic for more</div>
       </div>
 
       {/* KPI Grid */}

@@ -151,6 +151,10 @@ export async function fetchDeliveries(accessToken?: string) {
   return apiFetch("/api/delivery");
 }
 
+export async function fetchDeliveryTimeline(orderId: string) {
+  return apiFetch(`/api/delivery/${orderId}`);
+}
+
 // ─────────────────────────────────────────
 // Role-Specific Dashboard Data (Firestore + BigQuery)
 // ─────────────────────────────────────────
@@ -166,6 +170,13 @@ export async function fetchWorkerDashboard() {
 
 export async function fetchDashboardSummary() {
   return apiFetch<DashboardSummary>("/api/dashboard/summary");
+}
+
+export async function fetchRecentActivities(role?: DashboardRole, limit: number = 12) {
+  const params = new URLSearchParams();
+  if (role) params.set("role", role);
+  params.set("limit", String(limit));
+  return apiFetch<RecentActivityList>(`/api/dashboard/activities?${params.toString()}`);
 }
 
 // ─────────────────────────────────────────
@@ -271,8 +282,36 @@ export interface WorkerDashboardData {
   role: "worker";
   stats: WorkerStats;
   tasks: WorkerTask[];
-  recent_calls: { id: string; text: string; time: string; status: string }[];
+  recent_calls: {
+    id: string;
+    text: string;
+    transcript?: string | null;
+    intent?: string | null;
+    source?: string | null;
+    role?: string | null;
+    time: string;
+    status: string;
+    response?: string | null;
+  }[];
   active_deliveries: DeliveryItem[];
+  last_updated: string;
+}
+
+export interface RecentActivity {
+  id: string;
+  activity: string;
+  intent?: string | null;
+  role: string;
+  source: string;
+  status: string;
+  time: string;
+  created_at?: string | null;
+}
+
+export interface RecentActivityList {
+  role: string;
+  items: RecentActivity[];
+  total: number;
   last_updated: string;
 }
 

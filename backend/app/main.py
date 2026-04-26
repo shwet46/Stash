@@ -22,8 +22,8 @@ from app.api.dashboard import router as dashboard_router
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown events"""
     # Startup
-    print("🚀 Starting Stash Backend...")
-    print("✅ Database initialized")
+    print("Starting Stash Backend...")
+    print("Database initialized")
 
     # Register Telegram webhook (non-blocking)
     if settings.TELEGRAM_BOT_TOKEN:
@@ -31,18 +31,18 @@ async def lifespan(app: FastAPI):
             from app.services.telegram_svc import register_telegram_webhook
 
             result = await register_telegram_webhook()
-            print(f"📱 Telegram webhook: {result}")
+            print(f"Telegram webhook: {result}")
         except Exception as e:
-            print(f"⚠️ Telegram webhook registration failed: {e}")
+            print(f" Telegram webhook registration failed: {e}")
 
     yield
 
     # Shutdown
-    print("🔴 Shutting down Stash Backend...")
+    print("Shutting down Stash Backend...")
 
 
 app = FastAPI(
-    title="Stash — Voice-Native AI Supply Chain Platform",
+    title="Stash: Voice-Native AI Supply Chain Platform",
     description="Backend API for India's godown management platform. "
     "Manages inventory, orders, suppliers, billing, and voice interactions.",
     version="1.0.0",

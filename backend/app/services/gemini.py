@@ -1,10 +1,70 @@
-"""Gemini 3.0 Flash client — NLP, intent extraction, negotiation, and text generation"""
+"""Gemini REST client — NLP, intent extraction, negotiation, and text generation"""
 import json
-import google.generativeai as genai
+import re
+
+import httpx
+
 from app.core.config import settings
 
-genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_ENDPOINT = (
+    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+)
+
+
+class GeminiAPIError(RuntimeError):
+    pass
+
+
+async def _generate_content(prompt: str) -> str:
+    if not settings.GOOGLE_AI_API_KEY:
+        raise GeminiAPIError("GOOGLE_AI_API_KEY is not configured")
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt,
+                    }
+                ]
+            }
+        ]
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-goog-api-key": settings.GOOGLE_AI_API_KEY,
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(GEMINI_ENDPOINT, headers=headers, json=payload)
+
+    if response.status_code >= 400:
+        raise GeminiAPIError(
+            f"Gemini API request failed ({response.status_code}): {response.text}"
+        )
+
+    data = response.json()
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise GeminiAPIError("Gemini API returned no candidates")
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    text = "".join(part.get("text", "") for part in parts).strip()
+    if not text:
+        raise GeminiAPIError("Gemini API returned empty text")
+
+    return text
+
+
+def _extract_json(text: str) -> dict:
+    """Parse JSON returned by Gemini, tolerating fenced blocks."""
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    return json.loads(cleaned)
 
 
 async def extract_intent_and_entities(transcript: str) -> dict:
@@ -31,8 +91,8 @@ async def extract_intent_and_entities(transcript: str) -> dict:
 
     Transcript: """ + transcript
 
-    response = await model.generate_content_async(prompt)
-    return json.loads(response.text)
+    response_text = await _generate_content(prompt)
+    return _extract_json(response_text)
 
 
 async def negotiate_price(
@@ -65,8 +125,8 @@ async def negotiate_price(
       "minimum_quantity": number or null
     }}"""
 
-    response = await model.generate_content_async(prompt)
-    return json.loads(response.text)
+    response_text = await _generate_content(prompt)
+    return _extract_json(response_text)
 
 
 async def generate_telegram_message(
@@ -96,8 +156,7 @@ async def generate_telegram_message(
     Use HTML formatting (bold with <b>, code with <code>).
     Do not use markdown."""
 
-    response = await model.generate_content_async(prompt)
-    return response.text
+    return await _generate_content(prompt)
 
 
 async def generate_voice_response(
@@ -110,8 +169,7 @@ async def generate_voice_response(
     Language: {"Hindi" if language == "hi" else "English"}
     Keep it under 30 words. Natural, conversational. No punctuation that sounds odd when spoken."""
 
-    response = await model.generate_content_async(prompt)
-    return response.text
+    return await _generate_content(prompt)
 
 
 async def summarize_disruption_for_owner(alerts: list) -> str:
@@ -120,5 +178,4 @@ async def summarize_disruption_for_owner(alerts: list) -> str:
     Be specific about products, quantities, and recommended actions.
     Alerts: {json.dumps(alerts)}"""
 
-    response = await model.generate_content_async(prompt)
-    return response.text
+    return await _generate_content(prompt)

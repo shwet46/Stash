@@ -13,6 +13,7 @@ import {
   LuTruck as Truck,
   LuReceipt as Receipt,
   LuChartBar as BarChart3,
+  LuHistory as History,
   LuChevronLeft as ChevronLeft,
   LuChevronRight as ChevronRight,
   LuSettings as Settings,
@@ -34,6 +35,7 @@ const menuItems: { icon: any; label: string; href: string; roles: string[] }[] =
   { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["admin", "worker"] },
   { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["admin"] },
   { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["admin"] },
+  { icon: History, label: "Recent Activities", href: "/dashboard/activities", roles: ["admin", "worker"] },
 ];
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -144,19 +146,6 @@ export default function Sidebar() {
         )}
 
         <div className="sidebar__actions">
-          {/* Voice Indicator */}
-          {!collapsed && (
-            <div className="sidebar__voice">
-              <div className="sidebar__voice-icon">
-                <Mic size={12} />
-              </div>
-              <div className="sidebar__voice-meta">
-                <p className="sidebar__voice-title">Voice Assistant</p>
-                <p className="sidebar__voice-status">Active & Ready</p>
-              </div>
-            </div>
-          )}
-
           {/* Settings & Logout */}
           <div className="sidebar__actions">
             <button

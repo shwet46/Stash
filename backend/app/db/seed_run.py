@@ -12,6 +12,7 @@ FIRESTORE_COLLECTION_MAP = {
     "suppliers": "suppliers",
     "orders": "orders",
     "bills": "bills",
+    "delivery_updates": "delivery_updates",
 }
 
 async def seed_firestore(data: dict) -> None:

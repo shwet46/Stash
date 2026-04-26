@@ -105,8 +105,51 @@ async def handle_telegram_webhook(update: dict) -> None:
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     text = message.get("text", "")
+    voice = message.get("voice")
 
-    if not chat_id or not text:
+    if not chat_id:
+        return
+
+    if voice:
+        file_id = voice.get("file_id")
+        try:
+            async with httpx.AsyncClient() as client:
+                file_info_resp = await client.get(f"{TELEGRAM_API}/getFile?file_id={file_id}")
+                file_info = file_info_resp.json()
+                if file_info.get("ok"):
+                    file_path = file_info["result"]["file_path"]
+                    file_resp = await client.get(f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/{file_path}")
+                    voice_bytes = file_resp.content
+
+                    from app.services.speech import stt_process, tts_process
+                    from app.services.gemini import extract_intent_and_entities, generate_voice_response
+                    from app.services.intent_handler import handle_intent
+
+                    stt_result = await stt_process(voice_bytes)
+                    
+                    result = await extract_intent_and_entities(stt_result)
+                    intent = result.get("intent", "unknown")
+                    entities = result.get("entities", {})
+                    language = result.get("language_detected", "hi")
+
+                    action_result = await handle_intent(intent, entities, str(chat_id))
+                    
+                    response_text = await generate_voice_response(intent, action_result, language)
+                    
+                    response_voice_bytes = await tts_process(response_text)
+
+                    files = {"voice": ("response.mp3", response_voice_bytes, "audio/mpeg")}
+                    await client.post(
+                        f"{TELEGRAM_API}/sendVoice",
+                        data={"chat_id": chat_id, "caption": response_text},
+                        files=files
+                    )
+        except Exception as e:
+            print(f"[ERROR] Processing voice message: {str(e)}")
+            await send_message(chat_id, "Sorry, I had trouble processing your voice message.")
+        return
+
+    if not text:
         return
 
     if text.startswith("/start"):
