@@ -16,6 +16,7 @@ from app.api.delivery import router as delivery_router
 from app.api.telegram import router as telegram_router
 from app.api.auth import router as auth_router
 from app.api.dashboard import router as dashboard_router
+from app.api.barter import router as barter_router
 
 
 @asynccontextmanager
@@ -76,6 +77,7 @@ app.include_router(delivery_router)
 app.include_router(telegram_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
+app.include_router(barter_router)
 
 
 @app.get("/")
