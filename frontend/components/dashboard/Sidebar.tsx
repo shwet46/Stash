@@ -97,12 +97,12 @@ export default function Sidebar() {
           <div className="sidebar__profile-meta">
             <p className="sidebar__name">{userName}</p>
             <div className="sidebar__meta-row">
-              <span className="sidebar__role" style={{ backgroundColor: roleCfg.bg, color: roleCfg.color }}>
-                {roleCfg.label}
-              </span>
               {isRealtime && (
                 <span className="sidebar__realtime" title="Real-time connected" />
               )}
+              <span className="sidebar__role" style={{ backgroundColor: roleCfg.bg, color: roleCfg.color }}>
+                {roleCfg.label}
+              </span>
             </div>
           </div>
         )}
@@ -132,18 +132,7 @@ export default function Sidebar() {
 
       {/* Footer / Summary Section */}
       <div className="sidebar__footer">
-        {!collapsed && summary && (
-          <div className="sidebar__summary">
-            <div className="sidebar__summary-head">
-              <span className="sidebar__summary-title">{summary.label}</span>
-              <summary.icon size={14} className="sidebar__summary-icon" />
-            </div>
-            <div className="sidebar__summary-value">
-              <span className="sidebar__summary-amount">{summary.value}</span>
-              <span className="sidebar__summary-tag">+ Live</span>
-            </div>
-          </div>
-        )}
+
 
         <div className="sidebar__actions">
           {/* Settings & Logout */}
