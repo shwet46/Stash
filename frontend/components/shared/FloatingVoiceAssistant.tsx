@@ -25,6 +25,7 @@ export default function FloatingVoiceAssistant() {
       const mediaRecorder = recorderOptions ? new MediaRecorder(stream, recorderOptions) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      setVoiceReply(null);
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -73,12 +74,19 @@ export default function FloatingVoiceAssistant() {
         throw new Error(await response.text());
       }
 
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioBlobResp = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlobResp);
       const audio = new Audio(audioUrl);
       audio.onended = () => URL.revokeObjectURL(audioUrl);
       audio.play();
-      setVoiceReply(response.headers.get("X-Voice-Activity") || response.headers.get("X-Voice-Reply") || "Voice completed");
+
+      const commandId = response.headers.get("X-Voice-Command-Id");
+      const voiceIntent = response.headers.get("X-Voice-Intent");
+      const reply = response.headers.get("X-Voice-Activity") || response.headers.get("X-Voice-Reply");
+      
+      setVoiceReply(
+        reply || `${commandId ? "Saved" : "Processed"}${voiceIntent ? ` • ${voiceIntent}` : ""}`
+      );
     } catch (err) {
       console.error("Error processing voice:", err);
       setVoiceReply("Could not process voice command");
@@ -108,14 +116,14 @@ export default function FloatingVoiceAssistant() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             style={{
-              backgroundColor: "white",
-              padding: "0.7rem 1rem",
-              borderRadius: "0.9rem",
-              fontSize: "0.875rem",
-              fontWeight: 600,
+              backgroundColor: "var(--color-brand-50)",
+              padding: "12px 16px",
+              borderRadius: "12px",
+              fontSize: "15px",
+              fontWeight: 500,
               color: "var(--color-brand-800)",
               boxShadow: "0 12px 28px rgba(0,0,0,0.12)",
-              border: "1px solid var(--color-neutral-200)",
+              border: "1px solid var(--color-brand-200)",
               maxWidth: "18rem",
               textAlign: "center",
             }}

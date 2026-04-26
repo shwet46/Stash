@@ -24,15 +24,16 @@ export function useDashboardData<T extends keyof DashboardDataMap>(role: T) {
   const [isRealtime, setIsRealtime] = useState(false);
 
   const fetchData = useCallback(async () => {
+    const userName = (session?.user as any)?.name;
     try {
       setLoading(true);
       let result;
       // Handle admin/owner interchangeably
       const normalizedRole = (role as string).toLowerCase();
       if (normalizedRole === "admin" || normalizedRole === "owner") {
-        result = await fetchAdminDashboard();
+        result = await fetchAdminDashboard(userName);
       } else {
-        result = await fetchWorkerDashboard();
+        result = await fetchWorkerDashboard(userName);
       }
       setData(result as DashboardDataMap[T]);
       setError(null);
@@ -42,12 +43,13 @@ export function useDashboardData<T extends keyof DashboardDataMap>(role: T) {
     } finally {
       setLoading(false);
     }
-  }, [role]);
+  }, [role, session]);
 
   useEffect(() => {
     if (authStatus === "authenticated") {
       fetchData();
 
+      const userName = (session?.user as any)?.name;
       // Subscribe to real-time updates via SSE
       const normalizedRole = (role as string).toLowerCase() === "admin" || (role as string).toLowerCase() === "owner" ? "admin" : "worker";
       const unsubscribe = subscribeToDashboard<DashboardDataMap[T]>(
@@ -61,7 +63,8 @@ export function useDashboardData<T extends keyof DashboardDataMap>(role: T) {
         (err) => {
           console.warn("SSE Connection failed, falling back to polling", err);
           setIsRealtime(false);
-        }
+        },
+        userName
       );
 
       // Fallback polling if SSE fails or as a safety measure

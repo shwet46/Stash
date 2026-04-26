@@ -11,6 +11,7 @@ export default function ActivitiesPage() {
   const { data: session } = useSession();
   const rawRole = ((session?.user as any)?.role || "worker").toLowerCase();
   const role = rawRole === "admin" || rawRole === "owner" ? "admin" : "worker";
+  const userName = (session?.user as any)?.name;
   const [data, setData] = useState<RecentActivityList | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +19,7 @@ export default function ActivitiesPage() {
   const load = async () => {
     try {
       setLoading(true);
-      const result = await fetchRecentActivities(role as "admin" | "worker", 20);
+      const result = await fetchRecentActivities(role as "admin" | "worker", userName, 20);
       setData(result);
       setError(null);
     } catch (err) {

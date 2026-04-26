@@ -36,7 +36,7 @@ async def _fetch_collection(name: str):
         items.append(d)
     return items
 
-async def _build_admin_stats() -> dict:
+async def _build_admin_stats(user_name: str | None = None) -> dict:
     """Full business stats for Admin/Owner role."""
     now = datetime.utcnow()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
@@ -88,6 +88,13 @@ async def _build_admin_stats() -> dict:
 
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     all_calls = await _fetch_collection("voice_commands")
+    
+    # Filter out failed activities
+    all_calls = [c for c in all_calls if str(c.get("status")).lower() != "failed"]
+    
+    if user_name:
+        all_calls = [c for c in all_calls if c.get("user_name") == user_name or c.get("caller") == user_name]
+        
     calls_today = [c for c in all_calls if c.get("created_at") and c.get("created_at") >= today_start and c.get("status") == "processed"]
 
     users = await _fetch_collection("users")
@@ -160,7 +167,7 @@ async def _build_admin_stats() -> dict:
     }
 
 
-async def _build_worker_stats(user_id: str | None = None) -> dict:
+async def _build_worker_stats(user_name: str | None = None) -> dict:
     """Task and delivery focused stats for Worker role."""
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
@@ -172,6 +179,13 @@ async def _build_worker_stats(user_id: str | None = None) -> dict:
     low_stock = [i for i in inventory if _stock_status(i) in ("low", "critical")]
 
     all_calls = await _fetch_collection("voice_commands")
+    
+    # Filter out failed activities
+    all_calls = [c for c in all_calls if str(c.get("status")).lower() != "failed"]
+    
+    if user_name:
+        all_calls = [c for c in all_calls if c.get("user_name") == user_name or c.get("caller") == user_name]
+        
     calls = sorted(all_calls, key=lambda x: x.get("created_at") or "", reverse=True)[:5]
 
     tasks = []
@@ -245,10 +259,16 @@ async def _build_worker_stats(user_id: str | None = None) -> dict:
     }
 
 
-async def _build_recent_activities(role: str | None = None, limit: int = 12) -> dict:
+async def _build_recent_activities(role: str | None = None, user_name: str | None = None, limit: int = 12) -> dict:
     now = datetime.utcnow()
     all_calls = await _fetch_collection("voice_commands")
     role_lower = (role or "").lower()
+
+    # Filter out failed activities
+    all_calls = [c for c in all_calls if str(c.get("status")).lower() != "failed"]
+
+    if user_name:
+        all_calls = [c for c in all_calls if c.get("user_name") == user_name or c.get("caller") == user_name]
 
     if role_lower in ("admin", "owner"):
         filtered_calls = all_calls
@@ -297,15 +317,15 @@ async def _build_recent_activities(role: str | None = None, limit: int = 12) -> 
 
 @router.get("/admin")
 @router.get("/owner")
-async def admin_dashboard():
+async def admin_dashboard(user_name: str | None = None):
     """Real-time admin dashboard data from Firestore."""
-    return await _build_admin_stats()
+    return await _build_admin_stats(user_name)
 
 
 @router.get("/worker")
-async def worker_dashboard():
+async def worker_dashboard(user_name: str | None = None):
     """Real-time worker dashboard data from Firestore."""
-    return await _build_worker_stats()
+    return await _build_worker_stats(user_name)
 
 
 @router.get("/summary")
@@ -327,16 +347,16 @@ async def dashboard_summary():
 
 
 @router.get("/activities")
-async def dashboard_activities(role: str | None = None, limit: int = 12):
+async def dashboard_activities(role: str | None = None, user_name: str | None = None, limit: int = 12):
     """Recent voice activities for admin and worker dashboards."""
-    return await _build_recent_activities(role=role, limit=limit)
+    return await _build_recent_activities(role=role, user_name=user_name, limit=limit)
 
 
 # ─────────────────────────────────────────
 # SSE — Server-Sent Events for real-time push
 # ─────────────────────────────────────────
 
-async def _sse_generator(request: Request, role: str) -> AsyncGenerator[str, None]:
+async def _sse_generator(request: Request, role: str, user_name: str | None = None) -> AsyncGenerator[str, None]:
     """Yield real-time stats every 15 seconds via SSE."""
     try:
         while True:
@@ -345,9 +365,9 @@ async def _sse_generator(request: Request, role: str) -> AsyncGenerator[str, Non
             try:
                 role_lower = role.lower()
                 if role_lower in ("admin", "owner"):
-                    data = await _build_admin_stats()
+                    data = await _build_admin_stats(user_name)
                 else:
-                    data = await _build_worker_stats()
+                    data = await _build_worker_stats(user_name)
 
                 yield f"data: {json.dumps(data)}\n\n"
             except Exception as e:
@@ -359,7 +379,7 @@ async def _sse_generator(request: Request, role: str) -> AsyncGenerator[str, Non
 
 
 @router.get("/stream/{role}")
-async def dashboard_stream(role: str, request: Request):
+async def dashboard_stream(role: str, request: Request, user_name: str | None = None):
     """SSE endpoint — streams real-time dashboard data every 15s."""
     valid_roles = {"admin", "owner", "worker"}
     role_lower = role.lower()
@@ -367,7 +387,7 @@ async def dashboard_stream(role: str, request: Request):
         role_lower = "worker"
 
     return StreamingResponse(
-        _sse_generator(request, role_lower),
+        _sse_generator(request, role_lower, user_name),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
