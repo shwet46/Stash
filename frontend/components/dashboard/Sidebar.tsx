@@ -21,21 +21,43 @@ import {
   LuMic as Mic,
   LuRefreshCw as RefreshCw,
   LuSparkles as Sparkles,
+  LuCircleUser as UserCircle,
+  LuArrowLeftRight as Barter,
+  LuTrendingUp as Forecast,
 } from "react-icons/lu";
 import StashIcon from "../shared/StashIcon";
+import Modal from "../ui/Modal";
 
 
 type UserRole = "admin" | "worker";
 
-const menuItems: { icon: any; label: string; href: string; roles: string[] }[] = [
-  { icon: LayoutDashboard, label: "Overview", href: "/dashboard", roles: ["admin", "worker"] },
-  { icon: Package, label: "Inventory", href: "/dashboard/inventory", roles: ["admin", "worker"] },
-  { icon: ShoppingCart, label: "Orders", href: "/dashboard/orders", roles: ["admin"] },
-  { icon: Users, label: "Suppliers", href: "/dashboard/suppliers", roles: ["admin"] },
-  { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["admin", "worker"] },
-  { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["admin"] },
-  { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["admin"] },
-  { icon: History, label: "Recent Activities", href: "/dashboard/activities", roles: ["admin", "worker"] },
+const menuSections: { title: string; items: { icon: any; label: string; href: string; roles: string[] }[] }[] = [
+  {
+    title: "Main",
+    items: [
+      { icon: LayoutDashboard, label: "Overview", href: "/dashboard", roles: ["admin", "worker"] },
+      { icon: Package, label: "Inventory", href: "/dashboard/inventory", roles: ["admin", "worker"] },
+      { icon: ShoppingCart, label: "Orders", href: "/dashboard/orders", roles: ["admin"] },
+      { icon: Users, label: "Suppliers", href: "/dashboard/suppliers", roles: ["admin"] },
+      { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["admin", "worker"] },
+    ]
+  },
+  {
+    title: "Business",
+    items: [
+      { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["admin"] },
+      { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["admin"] },
+      { icon: UserCircle, label: "Customers", href: "/dashboard/customers", roles: ["admin"] },
+    ]
+  },
+  {
+    title: "AI Intelligence",
+    items: [
+      { icon: Barter, label: "Bartering", href: "/dashboard/bartering", roles: ["admin"] },
+      { icon: Forecast, label: "Forecasting", href: "/dashboard/forecasting", roles: ["admin"] },
+      { icon: History, label: "Recent Activities", href: "/dashboard/activities", roles: ["admin", "worker"] },
+    ]
+  }
 ];
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -53,9 +75,12 @@ export default function Sidebar() {
   const role = (rawRole === "admin" || rawRole === "owner" ? "admin" : "worker") as UserRole;
   const roleCfg = roleConfig[role] || roleConfig.worker;
   const userName = (session?.user as any)?.name || "User";
+  const userEmail = session?.user?.email || "No email available";
+  const userPhone = (session?.user as any)?.phone || "+91 XXXXXXXXXX";
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const { data: dashData, isRealtime } = useDashboardData(role);
-  const filtered = menuItems.filter(item => item.roles.includes(role));
 
   const getSummaryInfo = () => {
     if (!dashData) return null;
@@ -89,7 +114,12 @@ export default function Sidebar() {
       </div>
 
       {/* User Profile Section */}
-      <div className={`sidebar__profile ${collapsed ? "sidebar__profile--collapsed" : ""}`}>
+      <div 
+        className={`sidebar__profile ${collapsed ? "sidebar__profile--collapsed" : ""}`}
+        onClick={() => setIsProfileModalOpen(true)}
+        style={{ cursor: "pointer" }}
+        title="View Profile Details"
+      >
         <div className="sidebar__avatar">
           {userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
         </div>
@@ -97,12 +127,12 @@ export default function Sidebar() {
           <div className="sidebar__profile-meta">
             <p className="sidebar__name">{userName}</p>
             <div className="sidebar__meta-row">
-              <span className="sidebar__role" style={{ backgroundColor: roleCfg.bg, color: roleCfg.color }}>
-                {roleCfg.label}
-              </span>
               {isRealtime && (
                 <span className="sidebar__realtime" title="Real-time connected" />
               )}
+              <span className="sidebar__role" style={{ backgroundColor: roleCfg.bg, color: roleCfg.color }}>
+                {roleCfg.label}
+              </span>
             </div>
           </div>
         )}
@@ -110,40 +140,38 @@ export default function Sidebar() {
 
       {/* Navigation Menu */}
       <div className="sidebar__menu">
-        {!collapsed && (
-          <p className="sidebar__section">Main Menu</p>
-        )}
-        {filtered.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          
+        {menuSections.map((section) => {
+          const filteredItems = section.items.filter(item => item.roles.includes(role));
+          if (filteredItems.length === 0) return null;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar__link ${collapsed ? "sidebar__link--collapsed" : ""} ${isActive ? "sidebar__link--active" : ""}`}
-            >
-              <Icon size={20} className="sidebar__icon" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
+            <div key={section.title} className="sidebar__menu-section">
+              {!collapsed && (
+                <p className="sidebar__section">{section.title}</p>
+              )}
+              {filteredItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar__link ${collapsed ? "sidebar__link--collapsed" : ""} ${isActive ? "sidebar__link--active" : ""}`}
+                  >
+                    <Icon size={20} className="sidebar__icon" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </div>
 
       {/* Footer / Summary Section */}
       <div className="sidebar__footer">
-        {!collapsed && summary && (
-          <div className="sidebar__summary">
-            <div className="sidebar__summary-head">
-              <span className="sidebar__summary-title">{summary.label}</span>
-              <summary.icon size={14} className="sidebar__summary-icon" />
-            </div>
-            <div className="sidebar__summary-value">
-              <span className="sidebar__summary-amount">{summary.value}</span>
-              <span className="sidebar__summary-tag">+ Live</span>
-            </div>
-          </div>
-        )}
+
 
         <div className="sidebar__actions">
           {/* Settings & Logout */}
@@ -172,6 +200,64 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <Modal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+        title="Profile Details"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              width: '4rem', 
+              height: '4rem', 
+              backgroundColor: 'var(--color-brand-100)', 
+              color: 'var(--color-brand-700)', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold' 
+            }}>
+              {userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-brand-800)', margin: 0 }}>
+                {userName}
+              </h3>
+              <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', margin: 0 }}>
+                {userEmail}
+              </p>
+            </div>
+          </div>
+          
+          <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>System Role</span>
+              <span style={{ 
+                backgroundColor: roleCfg.bg, 
+                color: roleCfg.color, 
+                padding: '0.25rem 0.625rem', 
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 700 
+              }}>
+                {roleCfg.label}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>Phone</span>
+              <span style={{ color: 'var(--color-brand-700)', fontSize: '0.875rem', fontWeight: 600 }}>{userPhone}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>Account Status</span>
+              <span style={{ color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>Active</span>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </aside>
   );
 }

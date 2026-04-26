@@ -3,7 +3,7 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import FloatingVoiceAssistant from "@/components/shared/FloatingVoiceAssistant";
 
 export const metadata: Metadata = {
-  title: "Dashboard — Stash",
+  title: "Stash AI",
   description: "Manage your godown operations from a single dashboard.",
 };
 
