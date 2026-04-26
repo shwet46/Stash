@@ -1,4 +1,5 @@
 """AI Voice Bartering API — Gemini powered conversational price negotiation"""
+import asyncio
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -42,27 +43,55 @@ PRODUCT_CATALOGUE = {
 # Gemini helper — uses the working model
 # ──────────────────────────────────────────────────────────────────────────────
 
-GEMINI_MODEL = "gemini-flash-latest"
-GEMINI_ENDPOINT = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-)
+GEMINI_PRIMARY_MODEL = "gemini-flash-latest"
+GEMINI_FALLBACK_MODELS = ["gemini-1.5-flash"]
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+RETRYABLE_STATUS_CODES = {429, 500, 503}
+GEMINI_HTTP_TIMEOUT_SECONDS = 12.0
+GEMINI_MAX_ATTEMPTS_PER_MODEL = 2
+GEMINI_TOTAL_BUDGET_SECONDS = 20.0
 
 
 async def _gemini(prompt: str) -> str:
     if not settings.GOOGLE_AI_API_KEY:
         raise RuntimeError("GOOGLE_AI_API_KEY not configured")
+
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024},
     }
     headers = {"Content-Type": "application/json", "X-goog-api-key": settings.GOOGLE_AI_API_KEY}
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(GEMINI_ENDPOINT, headers=headers, json=payload)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Gemini error {resp.status_code}: {resp.text[:200]}")
-    data = resp.json()
-    parts = data["candidates"][0]["content"]["parts"]
-    return "".join(p.get("text", "") for p in parts).strip()
+
+    models = [GEMINI_PRIMARY_MODEL, *GEMINI_FALLBACK_MODELS]
+    last_error: str | None = None
+    start_time = asyncio.get_running_loop().time()
+
+    async with httpx.AsyncClient(timeout=GEMINI_HTTP_TIMEOUT_SECONDS) as client:
+        for model in models:
+            if (asyncio.get_running_loop().time() - start_time) >= GEMINI_TOTAL_BUDGET_SECONDS:
+                break
+            endpoint = f"{GEMINI_BASE_URL}/{model}:generateContent"
+
+            # Retry transient provider-side failures before trying fallback model.
+            for attempt in range(GEMINI_MAX_ATTEMPTS_PER_MODEL):
+                if (asyncio.get_running_loop().time() - start_time) >= GEMINI_TOTAL_BUDGET_SECONDS:
+                    break
+                resp = await client.post(endpoint, headers=headers, json=payload)
+
+                if resp.status_code < 400:
+                    data = resp.json()
+                    parts = data["candidates"][0]["content"]["parts"]
+                    return "".join(p.get("text", "") for p in parts).strip()
+
+                last_error = f"Gemini model={model} status={resp.status_code}: {resp.text[:200]}"
+                if resp.status_code in RETRYABLE_STATUS_CODES and attempt < (GEMINI_MAX_ATTEMPTS_PER_MODEL - 1):
+                    await asyncio.sleep(0.7 * (attempt + 1))
+                    continue
+                break
+
+    if (asyncio.get_running_loop().time() - start_time) >= GEMINI_TOTAL_BUDGET_SECONDS:
+        raise RuntimeError("Gemini request timed out under high demand")
+    raise RuntimeError(last_error or "Gemini request failed")
 
 
 def _extract_json(text: str) -> dict:
@@ -149,8 +178,16 @@ async def chat(req: ChatRequest):
         .replace("MESSAGE_PLACEHOLDER", req.message)
     )
 
-
-    raw = await _gemini(prompt)
+    try:
+        raw = await _gemini(prompt)
+    except Exception:
+        # Keep session alive and ask user to continue instead of failing the request.
+        return ChatResponse(
+            reply="I am facing high AI traffic right now. Please retry your last message in a few seconds.",
+            session_state=state,
+            negotiation_result=None,
+            done=False,
+        )
 
     # Check if AI returned the trigger JSON
     negotiation_result = None
@@ -264,8 +301,49 @@ Write a warm, natural spoken response in English (2-4 sentences). Use buyer's na
 Then return ONLY this JSON (no markdown):
 {{"decision":"{decisions[tier]}","counter_price":{counter_price if counter_price else 'null'},"minimum_quantity":{min_qty if min_qty else 'null'},"message":"your spoken response here","summary":"one line outcome"}}"""
 
-    raw = await _gemini(prompt)
-    result = _extract_json(raw)
+    try:
+        raw = await _gemini(prompt)
+        result = _extract_json(raw)
+    except Exception:
+        # Deterministic fallback if AI generation is temporarily unavailable.
+        if tier == 1:
+            return {
+                "decision": "accept",
+                "counter_price": None,
+                "minimum_quantity": None,
+                "message": f"Hi {buyer_name}, your offer works for us. We can confirm this {product} deal at ₹{offered_price}/{unit}.",
+                "summary": "Deal accepted at offered price",
+                "margin_protected": True,
+            }
+        if tier == 2:
+            min_qty = max(int(quantity * 1.3), 50)
+            return {
+                "decision": "accept_conditional",
+                "counter_price": None,
+                "minimum_quantity": min_qty,
+                "message": f"Hi {buyer_name}, we can accept ₹{offered_price}/{unit} if you increase the order to at least {min_qty} {unit}.",
+                "summary": "Conditional acceptance with minimum quantity",
+                "margin_protected": True,
+            }
+        if tier == 3:
+            fallback_counter = round(floor_price * 1.05, 2)
+            return {
+                "decision": "counter",
+                "counter_price": fallback_counter,
+                "minimum_quantity": None,
+                "message": f"Hi {buyer_name}, I cannot do ₹{offered_price}/{unit}. I can offer ₹{fallback_counter}/{unit} for this batch.",
+                "summary": "Counter-offer issued",
+                "margin_protected": True,
+            }
+
+        return {
+            "decision": "refuse",
+            "counter_price": None,
+            "minimum_quantity": None,
+            "message": f"Hi {buyer_name}, I cannot go below our cost for {product}. Please share a revised offer and we can revisit.",
+            "summary": "Offer declined below floor",
+            "margin_protected": True,
+        }
 
     # Hard margin protection
     result["margin_protected"] = True

@@ -6,6 +6,7 @@ import {
 } from "react-icons/lu";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const CHAT_REQUEST_TIMEOUT_MS = 18000;
 
 const PRODUCTS = [
   "Basmati Rice","Wheat","Sugar","Dal","Mustard Oil",
@@ -34,22 +35,6 @@ function Bubble({ text }: { text: string }) {
   return <>{parts.map((p,i) => p.startsWith("**")&&p.endsWith("**") ? <strong key={i}>{p.slice(2,-2)}</strong> : <span key={i}>{p}</span>)}</>;
 }
 
-// ─── TTS helper ──────────────────────────────────────────────────────────────
-function speak(text: string, muted: boolean) {
-  if (muted || typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const plain = text.replace(/\*\*/g, "").replace(/[₹]/g, " rupees ");
-  const utt = new SpeechSynthesisUtterance(plain);
-  utt.lang = "en-IN";
-  utt.rate = 1.0;
-  utt.pitch = 1.1;
-  // prefer an Indian English voice if available
-  const voices = window.speechSynthesis.getVoices();
-  const indian = voices.find(v => v.lang === "en-IN") || voices.find(v => v.lang.startsWith("en"));
-  if (indian) utt.voice = indian;
-  window.speechSynthesis.speak(utt);
-}
-
 export default function BarteringPage() {
   const [messages,  setMessages]  = useState<Msg[]>([{ role:"assistant", content: WELCOME, time: ts() }]);
   const [input,     setInput]     = useState("");
@@ -60,26 +45,80 @@ export default function BarteringPage() {
   const [listening, setListening] = useState(false);
   const [showProds, setShowProds] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const srRef = useRef<any>(null);
 
   function ts() { return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }
 
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
+
+  const speak = useCallback(async (text: string) => {
+    if (muted || typeof window === "undefined") return;
+
+    const plain = text.replace(/\*\*/g, "").replace(/[₹]/g, " rupees ").trim();
+    if (!plain) return;
+
+    try {
+      stopAudio();
+      const response = await fetch(`${API_BASE}/api/voice/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: plain,
+          source: "bartering_chat",
+          role: "admin",
+          caller: "web_user",
+          language_hint: navigator.language?.startsWith("hi") ? "hi-IN" : "en-IN",
+          user_name: "bartering_user",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audioUrlRef.current = url;
+      audio.onended = () => stopAudio();
+      await audio.play();
+    } catch (err) {
+      console.error("GCP TTS playback failed", err);
+    }
+  }, [muted, stopAudio]);
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading]);
 
   // Speak welcome on mount
   useEffect(() => {
-    // voices may load async
-    const trySpeak = () => speak(WELCOME, muted);
-    if (window.speechSynthesis.getVoices().length) trySpeak();
-    else window.speechSynthesis.onvoiceschanged = trySpeak;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void speak(WELCOME);
+  }, [speak]);
+
+  useEffect(() => {
+    if (muted) stopAudio();
+  }, [muted, stopAudio]);
+
+  useEffect(() => {
+    return () => stopAudio();
+  }, [stopAudio]);
 
   const addBot = useCallback((content: string) => {
     setMessages(p => [...p, { role:"assistant", content, time: ts() }]);
-    speak(content, muted);
-  }, [muted]);
+    void speak(content);
+  }, [speak]);
 
   const send = useCallback(async (text?: string) => {
     const msg = (text ?? input).trim();
@@ -88,21 +127,30 @@ export default function BarteringPage() {
     const userMsg: Msg = { role:"user", content: msg, time: ts() };
     setMessages(p => [...p, userMsg]);
     setLoading(true);
+    let timeoutId: number | null = null;
     try {
       const history = [...messages, userMsg].slice(-12).map(m => ({ role: m.role, content: m.content }));
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), CHAT_REQUEST_TIMEOUT_MS);
       const res = await fetch(`${API_BASE}/api/barter/chat`, {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ message: msg, history, session_state: state }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       addBot(data.reply);
       setState(data.session_state || {});
       if (data.negotiation_result) setResult(data.negotiation_result);
-    } catch {
-      addBot("⚠️ Connection error — please try again.");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        addBot("⚠️ Response is taking too long. Please resend your message.");
+      } else {
+        addBot("⚠️ Connection error — please try again.");
+      }
     } finally {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [input, loading, messages, state, addBot]);
@@ -135,15 +183,15 @@ export default function BarteringPage() {
   }, [listening, send]);
 
   const reset = () => {
-    window.speechSynthesis?.cancel();
+    stopAudio();
     setMessages([{ role:"assistant", content: WELCOME, time: ts() }]);
     setState({}); setResult(null); setInput("");
-    speak(WELCOME, muted);
+    void speak(WELCOME);
   };
 
   const tier = result?.tier as 1|2|3|4|undefined;
   const meta = tier ? TIER_META[tier] : null;
-  const isDone = state.stage === "done";
+  const isDone = false;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 5rem)", maxWidth:"68rem", margin:"0 auto", gap:"1rem" }}>
@@ -167,7 +215,7 @@ export default function BarteringPage() {
             style={{ display:"flex", alignItems:"center", gap:"0.375rem", padding:"0.5rem 0.875rem", border:"1.5px solid var(--color-divider)", borderRadius:"0.625rem", background:"white", cursor:"pointer", fontSize:"0.8125rem", fontWeight:600, color:"var(--color-brand-700)" }}>
             Products <LuChevronDown size={12}/>
           </button>
-          <button onClick={() => { setMuted(m=>!m); window.speechSynthesis?.cancel(); }}
+          <button onClick={() => setMuted(m=>!m)}
             style={{ padding:"0.5rem 0.875rem", border:"1.5px solid var(--color-divider)", borderRadius:"0.625rem", background:"white", cursor:"pointer", fontSize:"0.8125rem", fontWeight:600, color: muted ? "#d93025" : "var(--color-brand-700)", display:"flex", alignItems:"center", gap:"0.375rem" }}>
             {muted ? <LuVolumeX size={14}/> : <LuVolume2 size={14}/>} {muted?"Muted":"Sound"}
           </button>
@@ -236,26 +284,15 @@ export default function BarteringPage() {
               </div>
             )}
 
-            {/* Quick replies on first message */}
-            {messages.length===1 && !loading && (
-              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", paddingLeft:"2.625rem" }}>
-                {["My name is Ravi","My name is Priya","My name is Suresh"].map(s => (
-                  <button key={s} onClick={() => send(s)}
-                    style={{ padding:"0.375rem 0.875rem", border:"1.5px solid var(--color-brand-200)", borderRadius:"9999px", background:"white", cursor:"pointer", fontSize:"0.8125rem", fontWeight:500, color:"var(--color-brand-600)" }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
             <div ref={bottomRef}/>
           </div>
 
           {/* Input bar */}
           <div style={{ padding:"0.875rem 1rem", borderTop:"1px solid var(--color-brand-100)", background:"#faf8f6", display:"flex", gap:"0.625rem", alignItems:"center" }}>
             {/* Mic */}
-            <button onClick={toggleMic} disabled={isDone}
+            <button onClick={toggleMic} disabled={loading}
               title={listening ? "Stop recording" : "Speak your message"}
-              style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none", cursor: isDone?"not-allowed":"pointer",
+              style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none", cursor: loading?"not-allowed":"pointer",
                 background: listening ? "#d93025" : "var(--color-brand-100)",
                 color:       listening ? "white"    : "var(--color-brand-600)",
                 display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s",
@@ -266,19 +303,19 @@ export default function BarteringPage() {
             {/* Text input */}
             <input value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key==="Enter" && !e.shiftKey && send()}
-              disabled={loading || isDone}
-              placeholder={listening ? "🎙️ Listening… speak now" : isDone ? "Negotiation complete — start a new chat" : "Type or tap the mic to speak…"}
+              disabled={loading}
+              placeholder={listening ? "🎙️ Listening… speak now" : "Type your response or tap the mic to speak…"}
               style={{ flex:1, padding:"0.75rem 1rem", borderRadius:"0.75rem", border:"1.5px solid var(--color-brand-200)", fontSize:"0.9375rem", outline:"none", background:"white", transition:"border 0.2s" }}
               onFocus={e => e.target.style.borderColor="var(--color-brand-500)"}
               onBlur={e  => e.target.style.borderColor="var(--color-brand-200)"}
             />
 
             {/* Send */}
-            <button onClick={() => send()} disabled={loading || !input.trim() || isDone}
+            <button onClick={() => send()} disabled={loading || !input.trim()}
               style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none",
-                cursor: (loading||!input.trim()||isDone) ? "not-allowed" : "pointer",
-                background: input.trim() && !isDone ? "linear-gradient(135deg,#6b4226,#b57a55)" : "var(--color-brand-100)",
-                color:       input.trim() && !isDone ? "white" : "var(--color-muted)",
+                cursor: (loading||!input.trim()) ? "not-allowed" : "pointer",
+                background: input.trim() ? "linear-gradient(135deg,#6b4226,#b57a55)" : "var(--color-brand-100)",
+                color:       input.trim() ? "white" : "var(--color-muted)",
                 display:"flex", alignItems:"center", justifyContent:"center" }}>
               <LuSend size={18}/>
             </button>

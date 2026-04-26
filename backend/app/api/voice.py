@@ -4,6 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Request, Response, UploadFile, File, Form
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
 from app.services.twilio_svc import create_welcome_twiml, create_response_twiml
 from app.services.gemini import extract_intent_and_entities, generate_voice_response
 from app.services.speech import transcribe_phone_audio
@@ -14,6 +15,15 @@ router = APIRouter(prefix="/api/voice", tags=["voice"])
 
 
 VOICE_COLLECTION = "voice_commands"
+
+
+class WebTTSRequest(BaseModel):
+    text: str
+    source: str = "web_tts"
+    role: str = "admin"
+    caller: str = "web_user"
+    language_hint: str | None = None
+    user_name: str | None = None
 
 
 async def _store_voice_command(payload: dict) -> str | None:
@@ -31,6 +41,14 @@ def _truncate_header_text(text: str | None, limit: int = 140) -> str:
         return ""
     clean_text = str(text).replace("\n", " ").strip()
     return clean_text[:limit]
+
+
+def _safe_header_value(text: str | None, limit: int = 140) -> str:
+    """Starlette response headers must be latin-1 encodable."""
+    value = _truncate_header_text(text, limit=limit)
+    if not value:
+        return ""
+    return value.encode("latin-1", errors="ignore").decode("latin-1")
 
 
 @router.post("/welcome")
@@ -75,6 +93,24 @@ async def process_voice(request: Request):
         )
 
     return PlainTextResponse(content=twiml, media_type="application/xml")
+
+
+@router.post("/tts")
+async def process_web_tts(payload: WebTTSRequest):
+    """Generate TTS audio bytes for web dashboard using GCP voice."""
+    from app.services.speech import tts_process
+
+    text = (payload.text or "").strip()
+    if not text:
+        return Response(status_code=400, content="Text is required")
+
+    try:
+        response_audio = await tts_process(text)
+        headers = {"X-Voice-Reply": _safe_header_value(text)}
+        return Response(content=response_audio, media_type="audio/mpeg", headers=headers)
+    except Exception as e:
+        print(f"[ERROR] Web TTS failed: {str(e)}")
+        return Response(status_code=500, content="TTS processing failed")
 
 @router.post("/web")
 async def process_web_voice(
@@ -161,8 +197,8 @@ async def process_web_voice(
             headers["X-Voice-Command-Id"] = call_id
         headers["X-Voice-Intent"] = intent
         headers["X-Voice-Language"] = language
-        headers["X-Voice-Reply"] = _truncate_header_text(response_text)
-        headers["X-Voice-Activity"] = _truncate_header_text(activity_summary)
+        headers["X-Voice-Reply"] = _safe_header_value(response_text)
+        headers["X-Voice-Activity"] = _safe_header_value(activity_summary)
 
         return Response(content=response_audio, media_type="audio/mpeg", headers=headers)
         
