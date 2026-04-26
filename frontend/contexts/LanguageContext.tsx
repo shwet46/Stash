@@ -38,7 +38,8 @@ const translations = {
     "Active": "Active",
     "Main": "Main",
     "Business": "Business",
-    "AI Intelligence": "AI Intelligence"
+    "AI Intelligence": "AI Intelligence",
+    "No email available": "No email available"
   },
   hi: {
     // Sidebar Main
@@ -67,7 +68,8 @@ const translations = {
     "Active": "सक्रिय",
     "Main": "मुख्य",
     "Business": "व्यापार",
-    "AI Intelligence": "कृत्रिम बुद्धिमत्ता (AI)"
+    "AI Intelligence": "कृत्रिम बुद्धिमत्ता (AI)",
+    "No email available": "कोई ईमेल उपलब्ध नहीं है"
   }
 };
 

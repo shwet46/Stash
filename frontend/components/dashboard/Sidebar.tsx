@@ -243,7 +243,7 @@ export default function Sidebar() {
                 {userName}
               </h3>
               <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', margin: 0 }}>
-                {userEmail}
+                {t(userEmail)}
               </p>
             </div>
           </div>
