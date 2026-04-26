@@ -1485,7 +1485,7 @@ html {
 
 .sidebar__menu {
   flex: 1;
-  padding: 0 0.75rem;
+  padding: 0 0.75rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -1517,6 +1517,17 @@ html {
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
+}
+
+.sidebar__menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-bottom: 1rem;
+}
+
+.sidebar__menu-section:last-child {
+  margin-bottom: 0;
 }
 
 .sidebar__section {

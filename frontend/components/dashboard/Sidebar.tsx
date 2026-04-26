@@ -21,21 +21,42 @@ import {
   LuMic as Mic,
   LuRefreshCw as RefreshCw,
   LuSparkles as Sparkles,
+  LuCircleUser as UserCircle,
+  LuArrowLeftRight as Barter,
+  LuTrendingUp as Forecast,
 } from "react-icons/lu";
 import StashIcon from "../shared/StashIcon";
 
 
 type UserRole = "admin" | "worker";
 
-const menuItems: { icon: any; label: string; href: string; roles: string[] }[] = [
-  { icon: LayoutDashboard, label: "Overview", href: "/dashboard", roles: ["admin", "worker"] },
-  { icon: Package, label: "Inventory", href: "/dashboard/inventory", roles: ["admin", "worker"] },
-  { icon: ShoppingCart, label: "Orders", href: "/dashboard/orders", roles: ["admin"] },
-  { icon: Users, label: "Suppliers", href: "/dashboard/suppliers", roles: ["admin"] },
-  { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["admin", "worker"] },
-  { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["admin"] },
-  { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["admin"] },
-  { icon: History, label: "Recent Activities", href: "/dashboard/activities", roles: ["admin", "worker"] },
+const menuSections: { title: string; items: { icon: any; label: string; href: string; roles: string[] }[] }[] = [
+  {
+    title: "Main",
+    items: [
+      { icon: LayoutDashboard, label: "Overview", href: "/dashboard", roles: ["admin", "worker"] },
+      { icon: Package, label: "Inventory", href: "/dashboard/inventory", roles: ["admin", "worker"] },
+      { icon: ShoppingCart, label: "Orders", href: "/dashboard/orders", roles: ["admin"] },
+      { icon: Users, label: "Suppliers", href: "/dashboard/suppliers", roles: ["admin"] },
+      { icon: Truck, label: "Deliveries", href: "/dashboard/deliveries", roles: ["admin", "worker"] },
+    ]
+  },
+  {
+    title: "Business",
+    items: [
+      { icon: Receipt, label: "Billing", href: "/dashboard/billing", roles: ["admin"] },
+      { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics", roles: ["admin"] },
+      { icon: UserCircle, label: "Customers", href: "/dashboard/customers", roles: ["admin"] },
+    ]
+  },
+  {
+    title: "AI Intelligence",
+    items: [
+      { icon: Barter, label: "Bartering", href: "/dashboard/bartering", roles: ["admin"] },
+      { icon: Forecast, label: "Forecasting", href: "/dashboard/forecasting", roles: ["admin"] },
+      { icon: History, label: "Recent Activities", href: "/dashboard/activities", roles: ["admin", "worker"] },
+    ]
+  }
 ];
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -55,7 +76,6 @@ export default function Sidebar() {
   const userName = (session?.user as any)?.name || "User";
 
   const { data: dashData, isRealtime } = useDashboardData(role);
-  const filtered = menuItems.filter(item => item.roles.includes(role));
 
   const getSummaryInfo = () => {
     if (!dashData) return null;
@@ -110,22 +130,31 @@ export default function Sidebar() {
 
       {/* Navigation Menu */}
       <div className="sidebar__menu">
-        {!collapsed && (
-          <p className="sidebar__section">Main Menu</p>
-        )}
-        {filtered.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          
+        {menuSections.map((section) => {
+          const filteredItems = section.items.filter(item => item.roles.includes(role));
+          if (filteredItems.length === 0) return null;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar__link ${collapsed ? "sidebar__link--collapsed" : ""} ${isActive ? "sidebar__link--active" : ""}`}
-            >
-              <Icon size={20} className="sidebar__icon" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
+            <div key={section.title} className="sidebar__menu-section">
+              {!collapsed && (
+                <p className="sidebar__section">{section.title}</p>
+              )}
+              {filteredItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar__link ${collapsed ? "sidebar__link--collapsed" : ""} ${isActive ? "sidebar__link--active" : ""}`}
+                  >
+                    <Icon size={20} className="sidebar__icon" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </div>
