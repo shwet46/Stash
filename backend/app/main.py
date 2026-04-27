@@ -17,6 +17,7 @@ from app.api.telegram import router as telegram_router
 from app.api.auth import router as auth_router
 from app.api.dashboard import router as dashboard_router
 from app.api.barter import router as barter_router
+from app.api.forecasting import router as forecasting_router
 
 
 @asynccontextmanager
@@ -25,6 +26,17 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting Stash Backend...")
     print("Database initialized")
+
+    # Warm up ML models
+    try:
+        from app.services.ml_pipeline import get_model_status
+        status = get_model_status()
+        if status["models_loaded"]:
+            print("✅ ML models loaded and ready")
+        else:
+            print(f"⚠ ML models using heuristic fallback: {status['error']}")
+    except Exception as e:
+        print(f"⚠ ML model warm-up failed: {e}")
 
     # Register Telegram webhook (non-blocking)
     if settings.TELEGRAM_BOT_TOKEN:
@@ -78,6 +90,7 @@ app.include_router(telegram_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(barter_router)
+app.include_router(forecasting_router)
 
 
 @app.get("/")
