@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Sidebar from "@/components/dashboard/Sidebar";
-import FloatingVoiceAssistant from "@/components/shared/FloatingVoiceAssistant";
+import DashboardVoiceAssistant from "@/components/shared/DashboardVoiceAssistant";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export default function DashboardLayout({
         <main className="dashboard-main">
           <div className="dashboard-content">{children}</div>
         </main>
-        <FloatingVoiceAssistant />
+        <DashboardVoiceAssistant />
       </div>
     </LanguageProvider>
   );

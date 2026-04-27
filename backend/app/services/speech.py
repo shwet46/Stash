@@ -1,5 +1,7 @@
 import os
 import re
+import subprocess
+import tempfile
 from google.cloud import speech_v2, texttospeech
 from app.core.config import settings
 
@@ -20,46 +22,78 @@ async def stt_process(audio_bytes: bytes, language_code: str = "hi-IN") -> str:
     print(f"[DEBUG] Received {len(audio_bytes)} bytes of audio")
     
     try:
-        client = speech_v2.SpeechAsyncClient()
-        preferred_languages = [language_code, "hi-IN", "en-IN", "mr-IN"]
-        language_codes: list[str] = []
-        for code in preferred_languages:
-            if code and code not in language_codes:
-                language_codes.append(code)
-            if len(language_codes) == 3:
-                break
+        is_webm = audio_bytes.startswith(b'\x1aE\xdf\xa3')
         
-        config = speech_v2.RecognitionConfig(
-            auto_decoding_config=speech_v2.AutoDetectDecodingConfig(),
-            language_codes=language_codes,
-            model="latest_long",
-            features=speech_v2.RecognitionFeatures(
-                enable_word_time_offsets=True,
-            ),
-        )
+        if is_webm:
+            print("[DEBUG] WebM audio detected, converting to WAV via ffmpeg...")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_in:
+                temp_in.write(audio_bytes)
+                temp_in.flush()
+                temp_in_path = temp_in.name
+            
+            temp_out_path = temp_in_path + ".wav"
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", temp_in_path, "-ac", "1", "-ar", "16000", temp_out_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True
+                )
+                with open(temp_out_path, "rb") as f:
+                    audio_bytes = f.read()
+                print("[DEBUG] Successfully converted WebM to WAV")
+            except Exception as e:
+                print(f"[WARN] Failed to convert WebM to WAV: {e}")
+            finally:
+                if os.path.exists(temp_in_path):
+                    os.remove(temp_in_path)
+                if os.path.exists(temp_out_path):
+                    os.remove(temp_out_path)
+
+        import base64
+        import httpx
+        from app.core.config import settings
+
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": "Transcribe the speech in this audio exactly as spoken. Return only the text. If there is no discernible speech, say nothing. Do not add any commentary."},
+                        {"inlineData": {"mimeType": "audio/wav", "data": base64.b64encode(audio_bytes).decode("utf-8")}}
+                    ]
+                }
+            ],
+            "generationConfig": {"temperature": 0.0}
+        }
         
-        request = speech_v2.RecognizeRequest(
-            recognizer=f"projects/{GCP_PROJECT_ID}/locations/global/recognizers/_",
-            config=config,
-            content=audio_bytes,
-        )
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": settings.GOOGLE_AI_API_KEY,
+        }
         
-        response = await client.recognize(request=request)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                headers=headers,
+                json=payload,
+                timeout=30.0
+            )
+            
+        if response.status_code >= 400:
+            print(f"[ERROR] Gemini STT failed ({response.status_code}): {response.text}")
+            return "Sorry, I encountered an error processing your speech."
+            
+        data = response.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            return "I couldn't understand what was said. Please try again."
+            
+        parts = candidates[0].get("content", {}).get("parts", [])
+        result = "".join(part.get("text", "") for part in parts).strip()
         
-        transcripts = [
-            r.alternatives[0].transcript
-            for r in response.results
-            if r.alternatives
-        ]
-        
-        if not transcripts:
-            print("[WARN] No speech detected in audio")
-            return "I couldn't understand any speech in the audio. Please try speaking more clearly."
-        
-        result = " ".join(transcripts).strip()
-        
-        if not result:
-            print("[WARN] Transcription resulted in empty string")
+        # Clean up common empty/filler tokens Gemini might return for silence
+        lower_res = result.lower().strip()
+        if not result or lower_res in ("uh.", "uh", "um", "um.", "i couldn't understand what was said. please try again."):
             return "I couldn't understand what was said. Please try again."
         
         print(f"[DEBUG] Transcription: {result}")

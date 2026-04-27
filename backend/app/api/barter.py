@@ -105,6 +105,52 @@ def _extract_json(text: str) -> dict:
     return json.loads(cleaned)
 
 
+async def _to_hinglish(text: str) -> str:
+    """Convert a response to natural Hinglish (Roman Hindi) while preserving meaning."""
+    if not text:
+        return text
+
+    prompt = (
+        "Rewrite the following text into natural Hinglish using only English letters (Roman script). "
+        "Do not use Devanagari. Do not keep plain English phrasing. Keep meaning, names, quantities, prices, "
+        "and product terms unchanged. Keep it short and conversational for India wholesale context. "
+        "Return only the rewritten text.\n\n"
+        f"Text: {text}"
+    )
+
+    stronger_prompt = (
+        "Convert this sentence to clearly Hindi-first Hinglish in Roman script. "
+        "Avoid plain English sentence structure. Include natural Hinglish words like aap, kya, hai, chahiye, kar, "
+        "ka, ki where appropriate. Do not use Devanagari. Return only converted text.\n\n"
+        f"Text: {text}"
+    )
+
+    def _looks_plain_english(value: str) -> bool:
+        lower = value.lower()
+        english_markers = [
+            "great to meet you", "so good to meet you", "what product", "planning to buy",
+            "how much are you ready", "now,", "okay,", "today?", "you want",
+        ]
+        hinglish_markers = ["aap", "kya", "hai", "chahiye", "kar", "ka", "ki", "bolo", "kitna", "naam"]
+        eng_hits = sum(1 for m in english_markers if m in lower)
+        hin_hits = sum(1 for m in hinglish_markers if m in lower)
+        return eng_hits >= 1 and hin_hits == 0
+
+    try:
+        converted = await _gemini(prompt)
+        converted = converted.strip()
+        if not converted:
+            return text
+        if _looks_plain_english(converted):
+            second_pass = await _gemini(stronger_prompt)
+            second_pass = second_pass.strip()
+            if second_pass:
+                converted = second_pass
+        return converted
+    except Exception:
+        return text
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 4-Tier Engine (pure logic, AI cannot override this)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -132,6 +178,7 @@ class ChatRequest(BaseModel):
     message: str
     history: list[ChatMessage] = []
     session_state: dict = {}  # tracks: buyer_name, product, quantity, offered_price, stage
+    response_style: str | None = None
 
 class ChatResponse(BaseModel):
     reply: str
@@ -158,6 +205,7 @@ SYSTEM_PROMPT_TEMPLATE = (
     "- If the product is not in our catalogue, say we don't stock it and ask for another.\n"
     "- Numbers only for quantity and price (no units in the JSON values).\n"
     "- The catalogue: Basmati Rice, Wheat, Sugar, Dal, Mustard Oil, Salt, Onion, Potato, Maida, Besan, Rice, Chilli, Turmeric, Soybeans, Groundnut.\n\n"
+    "RESPONSE STYLE INSTRUCTIONS:\nSTYLE_PLACEHOLDER\n\n"
     "CURRENT SESSION STATE: STATE_PLACEHOLDER\n"
     "CONVERSATION HISTORY:\nHISTORY_PLACEHOLDER\n"
     "USER JUST SAID: MESSAGE_PLACEHOLDER\n\n"
@@ -169,10 +217,22 @@ SYSTEM_PROMPT_TEMPLATE = (
 async def chat(req: ChatRequest):
     """Conversational negotiation — AI collects info then negotiates."""
     state = dict(req.session_state)
+    requested_style = (req.response_style or state.get("response_style") or "default").lower()
+    response_style = "hinglish" if requested_style == "hinglish" else "default"
+    state["response_style"] = response_style
+
+    style_prompt = "Use your default conversational style."
+    if response_style == "hinglish":
+        style_prompt = (
+            "Reply strictly in natural Hinglish (Hindi in English letters, Roman script only). "
+            "Do not reply in plain English. Do not use Devanagari. Keep the tone warm and casual."
+        )
+
     history_text = "\n".join(f"{m.role}: {m.content}" for m in req.history[-10:]) or "(none)"
 
     prompt = (
         SYSTEM_PROMPT_TEMPLATE
+        .replace("STYLE_PLACEHOLDER", style_prompt)
         .replace("STATE_PLACEHOLDER", json.dumps(state))
         .replace("HISTORY_PLACEHOLDER", history_text)
         .replace("MESSAGE_PLACEHOLDER", req.message)
@@ -182,8 +242,11 @@ async def chat(req: ChatRequest):
         raw = await _gemini(prompt)
     except Exception:
         # Keep session alive and ask user to continue instead of failing the request.
+        fallback_reply = "I am facing high AI traffic right now. Please retry your last message in a few seconds."
+        if response_style == "hinglish":
+            fallback_reply = "Abhi AI traffic zyada hai. Thoda sa wait karke apna last message fir se bhejo."
         return ChatResponse(
-            reply="I am facing high AI traffic right now. Please retry your last message in a few seconds.",
+            reply=fallback_reply,
             session_state=state,
             negotiation_result=None,
             done=False,
@@ -253,6 +316,7 @@ async def chat(req: ChatRequest):
                 unit=unit,
                 tier=tier,
                 target_min_qty=target_min_qty,
+                response_style=response_style,
             )
 
             # Save to Firestore
@@ -299,11 +363,24 @@ async def chat(req: ChatRequest):
                     print(f"Failed to auto-create order: {e}")
 
             reply = neg_result.get("message", "")
-            negotiation_result = {**neg_result, "record_id": record_id, "floor_price": floor_price, "market_rate": market_rate, "tier": 1 if tier == 5 else tier}
+            if response_style == "hinglish":
+                reply = await _to_hinglish(reply)
+                neg_result["message"] = reply
+            negotiation_result = {
+                **neg_result,
+                "record_id": record_id,
+                "offered_price": offered_price,
+                "floor_price": floor_price,
+                "market_rate": market_rate,
+                "tier": 1 if tier == 5 else tier,
+            }
             done = True
             state["stage"] = "done"
     except (json.JSONDecodeError, ValueError, KeyError):
         pass  # Normal conversational reply
+
+    if response_style == "hinglish" and not done:
+        reply = await _to_hinglish(reply)
 
     return ChatResponse(
         reply=reply,
@@ -317,6 +394,7 @@ async def _negotiate_response(
     buyer_name: str, product: str, quantity: float, offered_price: float,
     floor_price: float, ceiling_price: float, market_rate: float, unit: str, tier: int,
     target_min_qty: int = None,
+    response_style: str = "default",
 ) -> dict:
     """Generate Gemini negotiation message for the given tier."""
     min_qty = target_min_qty if target_min_qty else (max(int(quantity * 1.3), 50) if tier == 2 else None)
@@ -331,6 +409,13 @@ async def _negotiate_response(
     counter_price = round(floor_price * 1.05, 2) if tier == 3 else None
     decisions = {1: "accept", 2: "accept_conditional", 3: "counter", 4: "refuse", 5: "accept"}
 
+    style_line = "Write a warm, natural spoken response in English (2-4 sentences). Use buyer's name."
+    if response_style == "hinglish":
+        style_line = (
+            "Write a warm, natural spoken response in Hinglish (Hindi in English letters, Roman script only) "
+            "in 2-4 sentences. Use buyer's name. Do not use Devanagari."
+        )
+
     prompt = f"""You are StashBot, negotiating for a wholesale godown in India.
 Buyer: {buyer_name} | Product: {product} | Qty: {quantity} {unit} | Offered: ₹{offered_price}/{unit}
 
@@ -338,7 +423,7 @@ Buyer: {buyer_name} | Product: {product} | Qty: {quantity} {unit} | Offered: ₹
 
 IMPORTANT: NEVER agree to sell below ₹{floor_price}/{unit}. This is non-negotiable.
 
-Write a warm, natural spoken response in English (2-4 sentences). Use buyer's name.
+{style_line}
 Then return ONLY this JSON (no markdown):
 {{"decision":"{decisions[tier]}","counter_price":{counter_price if counter_price else 'null'},"minimum_quantity":{min_qty if min_qty else 'null'},"message":"your spoken response here","summary":"one line outcome"}}"""
 
@@ -347,6 +432,45 @@ Then return ONLY this JSON (no markdown):
         result = _extract_json(raw)
     except Exception:
         # Deterministic fallback if AI generation is temporarily unavailable.
+        if response_style == "hinglish":
+            if tier == 1 or tier == 5:
+                return {
+                    "decision": "accept",
+                    "counter_price": None,
+                    "minimum_quantity": None,
+                    "message": f"Hi {buyer_name}, aapka offer theek hai. Yeh {product} deal ₹{offered_price}/{unit} par confirm karte hain.",
+                    "summary": "Deal accepted at offered price",
+                    "margin_protected": True,
+                }
+            if tier == 2:
+                return {
+                    "decision": "accept_conditional",
+                    "counter_price": None,
+                    "minimum_quantity": min_qty,
+                    "message": f"Hi {buyer_name}, ₹{offered_price}/{unit} par deal ho sakti hai agar order kam se kam {min_qty} {unit} ka ho.",
+                    "summary": "Conditional acceptance with minimum quantity",
+                    "margin_protected": True,
+                }
+            if tier == 3:
+                fallback_counter = round(floor_price * 1.05, 2)
+                return {
+                    "decision": "counter",
+                    "counter_price": fallback_counter,
+                    "minimum_quantity": None,
+                    "message": f"Hi {buyer_name}, ₹{offered_price}/{unit} possible nahi hai. Main ₹{fallback_counter}/{unit} ka best counter de sakta hoon.",
+                    "summary": "Counter-offer issued",
+                    "margin_protected": True,
+                }
+
+            return {
+                "decision": "refuse",
+                "counter_price": None,
+                "minimum_quantity": None,
+                "message": f"Hi {buyer_name}, {product} ke liye is price par jaana possible nahi hai. Thoda better offer do, phir turant check karte hain.",
+                "summary": "Offer declined below floor",
+                "margin_protected": True,
+            }
+
         if tier == 1 or tier == 5:
             return {
                 "decision": "accept",

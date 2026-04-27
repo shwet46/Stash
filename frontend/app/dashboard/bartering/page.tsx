@@ -43,12 +43,18 @@ export default function BarteringPage() {
   const [result,    setResult]    = useState<NegResult|null>(null);
   const [muted,     setMuted]     = useState(false);
   const [listening, setListening] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [showProds, setShowProds] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Msg[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const srRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+
+  const recorderOptions = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+    ? { mimeType: "audio/webm;codecs=opus" }
+    : undefined;
 
   function ts() { return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }
 
@@ -102,10 +108,9 @@ export default function BarteringPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading]);
 
-  // Speak welcome on mount
   useEffect(() => {
-    void speak(WELCOME);
-  }, [speak]);
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (muted) stopAudio();
@@ -120,22 +125,23 @@ export default function BarteringPage() {
     void speak(content);
   }, [speak]);
 
-  const send = useCallback(async (text?: string) => {
+  const send = useCallback(async (text?: string, responseStyle?: "hinglish" | "default") => {
     const msg = (text ?? input).trim();
     if (!msg || loading) return;
+    setVoiceStatus(null);
     setInput("");
     const userMsg: Msg = { role:"user", content: msg, time: ts() };
     setMessages(p => [...p, userMsg]);
     setLoading(true);
     let timeoutId: number | null = null;
     try {
-      const history = [...messages, userMsg].slice(-12).map(m => ({ role: m.role, content: m.content }));
+      const history = [...messagesRef.current, userMsg].slice(-12).map(m => ({ role: m.role, content: m.content }));
       const controller = new AbortController();
       timeoutId = window.setTimeout(() => controller.abort(), CHAT_REQUEST_TIMEOUT_MS);
       const res = await fetch(`${API_BASE}/api/barter/chat`, {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ message: msg, history, session_state: state }),
+        body: JSON.stringify({ message: msg, history, session_state: state, response_style: responseStyle }),
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(`${res.status}`);
@@ -155,32 +161,98 @@ export default function BarteringPage() {
     }
   }, [input, loading, messages, state, addBot]);
 
+  const transcribeAndSend = useCallback(async (audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "barter-recording.webm");
+    formData.append("language_hint", navigator.language.startsWith("hi") ? "hi-IN" : "en-IN");
+    formData.append("output_mode", "hinglish");
+
+    try {
+      const response = await fetch(`${API_BASE}/api/voice/stt`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const detail = body?.detail || "Could not transcribe your voice input.";
+        addBot(`⚠️ ${detail}`);
+        return;
+      }
+
+      const data = await response.json();
+      const transcript = String(data?.transcript_hinglish || data?.transcript || "").trim();
+      const speechStyle = String(data?.speech_style || "english").toLowerCase();
+      if (!transcript) {
+        addBot("⚠️ No speech was detected. Please try again.");
+        setVoiceStatus(null);
+        return;
+      }
+
+      const statusLabel = speechStyle === "hinglish" ? "Hinglish" : speechStyle === "hindi" ? "Hindi→Roman" : "Voice";
+      setVoiceStatus(`You said (${statusLabel}): ${transcript}`);
+      const replyStyle = speechStyle === "english" ? "default" : "hinglish";
+      await send(transcript, replyStyle);
+    } catch {
+      addBot("⚠️ Voice transcription failed — please try again.");
+      setVoiceStatus(null);
+    }
+  }, [addBot, send]);
+
   // Voice input
   const toggleMic = useCallback(() => {
     if (listening) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (srRef.current as any)?.stop();
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      }
       setListening(false);
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice input not supported in this browser. Try Chrome."); return; }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const r = new SR() as any;
-    r.lang = "en-IN"; r.continuous = false; r.interimResults = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onresult = (e: any) => {
-      const transcript: string = e.results[0][0].transcript;
-      setListening(false);
-      send(transcript);          // auto-send once speech recognised
+
+    void (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = recorderOptions
+          ? new MediaRecorder(stream, recorderOptions)
+          : new MediaRecorder(stream);
+
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          setListening(false);
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          void transcribeAndSend(audioBlob);
+        };
+
+        mediaRecorder.onerror = () => {
+          setListening(false);
+          addBot("⚠️ Microphone recording failed.");
+        };
+
+        mediaRecorder.start();
+        setListening(true);
+      } catch {
+        addBot("⚠️ Microphone access is required for voice input.");
+      }
+    })();
+  }, [addBot, listening, recorderOptions, transcribeAndSend]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      }
     };
-    r.onerror = () => setListening(false);
-    r.onend   = () => setListening(false);
-    srRef.current = r;
-    r.start();
-    setListening(true);
-  }, [listening, send]);
+  }, []);
 
   const reset = () => {
     stopAudio();
@@ -191,6 +263,9 @@ export default function BarteringPage() {
 
   const tier = result?.tier as 1|2|3|4|undefined;
   const meta = tier ? TIER_META[tier] : null;
+  const buyerOffered = result && Number.isFinite(result.offered_price)
+    ? result.offered_price
+    : (typeof state.offered_price === "number" && Number.isFinite(state.offered_price) ? state.offered_price : null);
   const isDone = false;
 
   return (
@@ -288,37 +363,45 @@ export default function BarteringPage() {
           </div>
 
           {/* Input bar */}
-          <div style={{ padding:"0.875rem 1rem", borderTop:"1px solid var(--color-brand-100)", background:"#faf8f6", display:"flex", gap:"0.625rem", alignItems:"center" }}>
-            {/* Mic */}
-            <button onClick={toggleMic} disabled={loading}
-              title={listening ? "Stop recording" : "Speak your message"}
-              style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none", cursor: loading?"not-allowed":"pointer",
-                background: listening ? "#d93025" : "var(--color-brand-100)",
-                color:       listening ? "white"    : "var(--color-brand-600)",
-                display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s",
-                animation:   listening ? "pulse 1s infinite" : "none" }}>
-              {listening ? <LuMicOff size={18}/> : <LuMic size={18}/>}
-            </button>
+          <div style={{ padding:"0.875rem 1rem", borderTop:"1px solid var(--color-brand-100)", background:"#faf8f6" }}>
+            {voiceStatus && (
+              <div style={{ marginBottom:"0.5rem", fontSize:"0.8125rem", color:"var(--color-brand-700)", fontWeight:600 }}>
+                {voiceStatus}
+              </div>
+            )}
 
-            {/* Text input */}
-            <input value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key==="Enter" && !e.shiftKey && send()}
-              disabled={loading}
-              placeholder={listening ? "🎙️ Listening… speak now" : "Type your response or tap the mic to speak…"}
-              style={{ flex:1, padding:"0.75rem 1rem", borderRadius:"0.75rem", border:"1.5px solid var(--color-brand-200)", fontSize:"0.9375rem", outline:"none", background:"white", transition:"border 0.2s" }}
-              onFocus={e => e.target.style.borderColor="var(--color-brand-500)"}
-              onBlur={e  => e.target.style.borderColor="var(--color-brand-200)"}
-            />
+            <div style={{ display:"flex", gap:"0.625rem", alignItems:"center" }}>
+              {/* Mic */}
+              <button onClick={toggleMic} disabled={loading}
+                title={listening ? "Stop recording" : "Speak your message"}
+                style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none", cursor: loading?"not-allowed":"pointer",
+                  background: listening ? "#d93025" : "var(--color-brand-100)",
+                  color:       listening ? "white"    : "var(--color-brand-600)",
+                  display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s",
+                  animation:   listening ? "pulse 1s infinite" : "none" }}>
+                {listening ? <LuMicOff size={18}/> : <LuMic size={18}/>}
+              </button>
 
-            {/* Send */}
-            <button onClick={() => send()} disabled={loading || !input.trim()}
-              style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none",
-                cursor: (loading||!input.trim()) ? "not-allowed" : "pointer",
-                background: input.trim() ? "linear-gradient(135deg,#6b4226,#b57a55)" : "var(--color-brand-100)",
-                color:       input.trim() ? "white" : "var(--color-muted)",
-                display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <LuSend size={18}/>
-            </button>
+              {/* Text input */}
+              <input value={input} onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key==="Enter" && !e.shiftKey && send()}
+                disabled={loading}
+                placeholder={listening ? "🎙️ Listening… speak now" : "Type your response or tap the mic to speak…"}
+                style={{ flex:1, padding:"0.75rem 1rem", borderRadius:"0.75rem", border:"1.5px solid var(--color-brand-200)", fontSize:"0.9375rem", outline:"none", background:"white", transition:"border 0.2s" }}
+                onFocus={e => e.target.style.borderColor="var(--color-brand-500)"}
+                onBlur={e  => e.target.style.borderColor="var(--color-brand-200)"}
+              />
+
+              {/* Send */}
+              <button onClick={() => send()} disabled={loading || !input.trim()}
+                style={{ width:"2.75rem", height:"2.75rem", flexShrink:0, borderRadius:"0.75rem", border:"none",
+                  cursor: (loading||!input.trim()) ? "not-allowed" : "pointer",
+                  background: input.trim() ? "linear-gradient(135deg,#6b4226,#b57a55)" : "var(--color-brand-100)",
+                  color:       input.trim() ? "white" : "var(--color-muted)",
+                  display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <LuSend size={18}/>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -334,7 +417,7 @@ export default function BarteringPage() {
 
               {/* Price rows */}
               {([
-                { label:"Buyer Offered",  val:`₹${result.offered_price}`,  hi:false },
+                { label:"Buyer Offered",  val: buyerOffered !== null ? `₹${buyerOffered}` : "—",  hi:false },
                 { label:"Market Rate",    val:`₹${result.market_rate}`,    hi:false },
                 { label:"Floor Price",    val:`₹${result.floor_price}`,    hi:false },
                 ...(result.counter_price     ? [{ label:"Counter Offer",     val:`₹${result.counter_price}`,    hi:true }] : []),
