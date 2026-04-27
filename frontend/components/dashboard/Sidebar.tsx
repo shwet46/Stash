@@ -109,11 +109,12 @@ export default function Sidebar() {
           {!collapsed && (
             <div className="sidebar__brand-text">
               <span className="sidebar__brand-title notranslate" translate="no">Stash</span>
+              <span className="sidebar__brand-subtitle">Voice Native Supply Chain</span>
             </div>
           )}
         </Link>
 
-        {!collapsed && (
+        {/* {!collapsed && (
           <div className="sidebar__lang-wrapper">
             <span className={`sidebar__lang-label ${lang === "en" ? "sidebar__lang-label--active" : ""}`}>EN</span>
             <button 
@@ -125,11 +126,11 @@ export default function Sidebar() {
             </button>
             <span className={`sidebar__lang-label ${lang === "hi" ? "sidebar__lang-label--active" : ""}`}>हि</span>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* User Profile Section */}
-      <div 
+      <div
         className={`sidebar__profile ${collapsed ? "sidebar__profile--collapsed" : ""}`}
         onClick={() => setIsProfileModalOpen(true)}
         style={{ cursor: "pointer" }}
@@ -167,7 +168,7 @@ export default function Sidebar() {
               {filteredItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                
+
                 return (
                   <Link
                     key={item.href}
@@ -217,24 +218,24 @@ export default function Sidebar() {
       </div>
 
       {/* Profile Modal */}
-      <Modal 
-        isOpen={isProfileModalOpen} 
-        onClose={() => setIsProfileModalOpen(false)} 
+      <Modal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
         title={t("Profile Details")}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ 
-              width: '4rem', 
-              height: '4rem', 
-              backgroundColor: 'var(--color-brand-100)', 
-              color: 'var(--color-brand-700)', 
-              borderRadius: '50%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontSize: '1.5rem', 
-              fontWeight: 'bold' 
+            <div style={{
+              width: '4rem',
+              height: '4rem',
+              backgroundColor: 'var(--color-brand-100)',
+              color: 'var(--color-brand-700)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem',
+              fontWeight: 'bold'
             }}>
               {userName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
             </div>
@@ -247,17 +248,17 @@ export default function Sidebar() {
               </p>
             </div>
           </div>
-          
+
           <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: '1rem', marginTop: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem' }}>
               <span style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: 500 }}>{t("System Role")}</span>
-              <span style={{ 
-                backgroundColor: roleCfg.bg, 
-                color: roleCfg.color, 
-                padding: '0.25rem 0.625rem', 
+              <span style={{
+                backgroundColor: roleCfg.bg,
+                color: roleCfg.color,
+                padding: '0.25rem 0.625rem',
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
-                fontWeight: 700 
+                fontWeight: 700
               }}>
                 {t(roleCfg.label)}
               </span>

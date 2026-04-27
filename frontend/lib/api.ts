@@ -20,7 +20,10 @@ async function apiFetch<T>(
     ...(options?.headers || {}),
   };
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+  const baseUrl = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  const res = await fetch(`${baseUrl}${cleanEndpoint}`, {
     ...options,
     headers,
   });
