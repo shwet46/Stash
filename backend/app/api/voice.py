@@ -1,10 +1,14 @@
 """Voice API endpoints — Twilio webhook handlers"""
+import json
+import re
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Request, Response, UploadFile, File, Form
+import httpx
+from fastapi import APIRouter, Request, Response, UploadFile, File, Form, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
+from app.core.config import settings
 from app.services.twilio_svc import create_welcome_twiml, create_response_twiml
 from app.services.gemini import extract_intent_and_entities, generate_voice_response
 from app.services.speech import transcribe_phone_audio
@@ -24,6 +28,13 @@ class WebTTSRequest(BaseModel):
     caller: str = "web_user"
     language_hint: str | None = None
     user_name: str | None = None
+
+
+class WebSTTResponse(BaseModel):
+    transcript: str
+    language: str
+    transcript_hinglish: str | None = None
+    speech_style: str | None = None
 
 
 async def _store_voice_command(payload: dict) -> str | None:
@@ -49,6 +60,106 @@ def _safe_header_value(text: str | None, limit: int = 140) -> str:
     if not value:
         return ""
     return value.encode("latin-1", errors="ignore").decode("latin-1")
+
+
+def _sanitize_transcript_text(text: str | None, limit: int = 320) -> str:
+    """Normalize STT text for chat input and remove model-added wrappers."""
+    if not text:
+        return ""
+
+    cleaned = str(text).replace("\r", "\n").strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:[a-zA-Z0-9_-]+)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    lines = [ln.strip() for ln in cleaned.split("\n") if ln.strip()]
+    if not lines:
+        return ""
+
+    prefix_pattern = re.compile(
+        r"^(transcript|transcription|recognized text|recognized speech|result)\s*[:\-]\s*",
+        re.IGNORECASE,
+    )
+    normalized_lines = []
+    for line in lines:
+        line = prefix_pattern.sub("", line).strip(" \"'")
+        if line:
+            normalized_lines.append(line)
+
+    if not normalized_lines:
+        return ""
+
+    cleaned = " ".join(normalized_lines)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if len(cleaned) > limit:
+        cleaned = cleaned[:limit].rstrip()
+    return cleaned
+
+
+def _contains_devanagari(text: str) -> bool:
+    return bool(re.search(r"[\u0900-\u097F]", text or ""))
+
+
+HINGLISH_HINT_WORDS = {
+    "mujhe", "mera", "meri", "bhai", "bhaiya", "nahi", "nhi", "haan", "haanji", "acha",
+    "chahiye", "kitna", "kya", "ka", "ki", "ke", "aur", "par", "mein", "hai", "ho", "kar",
+    "kr", "jaldi", "abhi", "thoda", "zyada", "kam", "sab", "theek", "thik", "bhijwa", "bhejo",
+    "stock", "maal", "bhejna", "price", "rate", "rupaye", "rupee", "order", "deal",
+}
+
+
+def _detect_speech_style(text: str) -> str:
+    """Best-effort detection for Hindi script vs Roman Hinglish vs English."""
+    cleaned = (text or "").strip().lower()
+    if not cleaned:
+        return "english"
+    if _contains_devanagari(cleaned):
+        return "hindi"
+
+    words = re.findall(r"[a-zA-Z']+", cleaned)
+    if not words:
+        return "english"
+
+    hint_hits = sum(1 for w in words if w in HINGLISH_HINT_WORDS)
+    if hint_hits >= 2:
+        return "hinglish"
+    if hint_hits == 1 and len(words) <= 6:
+        return "hinglish"
+    return "english"
+
+
+async def _transliterate_to_hinglish(text: str) -> str:
+    """Convert Hindi/Devanagari transcript to Roman Hinglish for chat UX."""
+    if not text.strip() or not settings.GOOGLE_AI_API_KEY:
+        return text
+
+    prompt = (
+        "Transliterate the following Hindi text into natural Hinglish in Roman script. "
+        "Return only transliterated text. Do not translate meaning, do not add extra words, "
+        "do not use Devanagari. Keep numbers, product names, and units intact.\n\n"
+        f"Text: {text}"
+    )
+
+    payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.1}}
+    headers = {"Content-Type": "application/json", "X-goog-api-key": settings.GOOGLE_AI_API_KEY}
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent"
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(endpoint, headers=headers, json=payload)
+        if response.status_code >= 400:
+            return text
+
+        data = response.json()
+        candidates = data.get("candidates") or []
+        if not candidates:
+            return text
+        parts = candidates[0].get("content", {}).get("parts", [])
+        transliterated = "".join(part.get("text", "") for part in parts).strip()
+        transliterated = _sanitize_transcript_text(transliterated)
+        return transliterated or text
+    except Exception:
+        return text
 
 
 @router.post("/welcome")
@@ -111,6 +222,51 @@ async def process_web_tts(payload: WebTTSRequest):
     except Exception as e:
         print(f"[ERROR] Web TTS failed: {str(e)}")
         return Response(status_code=500, content="TTS processing failed")
+
+
+@router.post("/stt", response_model=WebSTTResponse)
+async def process_web_stt(
+    audio: UploadFile = File(...),
+    language_hint: str | None = Form(None),
+    output_mode: str | None = Form(None),
+):
+    """Transcribe uploaded web audio and return plain text."""
+    from app.services.speech import stt_process
+
+    try:
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio upload")
+
+        language = language_hint or "hi-IN"
+        transcript = await stt_process(audio_bytes, language)
+
+        if transcript.startswith("Sorry, I encountered an error processing your speech"):
+            raise HTTPException(status_code=500, detail=transcript)
+
+        if transcript.startswith("I couldn't understand") or transcript.startswith("I didn't receive"):
+            raise HTTPException(status_code=422, detail=transcript)
+
+        transcript = _sanitize_transcript_text(transcript)
+        if not transcript:
+            raise HTTPException(status_code=422, detail="No speech was detected. Please try again.")
+
+        speech_style = _detect_speech_style(transcript)
+        transcript_hinglish: str | None = None
+        if (output_mode or "").lower() == "hinglish":
+            transcript_hinglish = await _transliterate_to_hinglish(transcript) if _contains_devanagari(transcript) else transcript
+
+        return WebSTTResponse(
+            transcript=transcript,
+            language=language,
+            transcript_hinglish=transcript_hinglish,
+            speech_style=speech_style,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Web STT failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="STT processing failed")
 
 @router.post("/web")
 async def process_web_voice(
