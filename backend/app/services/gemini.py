@@ -6,7 +6,7 @@ import httpx
 
 from app.core.config import settings
 
-GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_MODEL = "gemma-3-4b-it"
 GEMINI_ENDPOINT = (
     f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 )

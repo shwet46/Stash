@@ -28,7 +28,7 @@ interface NegResult {
   offered_price: number; summary: string;
 }
 
-const WELCOME = "👋 Namaste! I'm StashBot, your AI negotiation assistant. I'll help you get the best wholesale deal. First — **what's your name?**";
+const WELCOME = "Namaste! I'm StashBot, your AI negotiation assistant. I'll help you get the best wholesale deal. First — **what's your name?**";
 
 function Bubble({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);

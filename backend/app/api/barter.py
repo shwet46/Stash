@@ -43,8 +43,8 @@ PRODUCT_CATALOGUE = {
 # Gemini helper — uses the working model
 # ──────────────────────────────────────────────────────────────────────────────
 
-GEMINI_PRIMARY_MODEL = "gemini-flash-latest"
-GEMINI_FALLBACK_MODELS = ["gemini-1.5-flash"]
+GEMINI_PRIMARY_MODEL = "gemma-3-4b-it"
+GEMINI_FALLBACK_MODELS = ["gemma-3-1b-it"]
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 RETRYABLE_STATUS_CODES = {429, 500, 503}
 GEMINI_HTTP_TIMEOUT_SECONDS = 12.0
@@ -224,6 +224,24 @@ async def chat(req: ChatRequest):
 
             tier = _determine_tier(offered_price, floor_price, market_rate)
 
+            target_min_qty = state.get("required_min_qty")
+            if not target_min_qty:
+                import re
+                m = re.findall(r"(?:minimum(?: order)? quantity of|at least) (\d+)", history_text, re.IGNORECASE)
+                if m:
+                    target_min_qty = float(m[-1])
+
+            if tier == 2:
+                if target_min_qty and quantity >= target_min_qty:
+                    tier = 5
+                    state.pop("required_min_qty", None)
+                else:
+                    if not target_min_qty:
+                        target_min_qty = max(int(quantity * 1.3), 50)
+                        state["required_min_qty"] = target_min_qty
+            elif tier != 2 and tier != 5:
+                state.pop("required_min_qty", None)
+
             neg_result = await _negotiate_response(
                 buyer_name=buyer_name,
                 product=data.get("product", product),
@@ -234,6 +252,7 @@ async def chat(req: ChatRequest):
                 market_rate=market_rate,
                 unit=unit,
                 tier=tier,
+                target_min_qty=target_min_qty,
             )
 
             # Save to Firestore
@@ -248,7 +267,7 @@ async def chat(req: ChatRequest):
                 "floor_price": floor_price,
                 "ceiling_price": ceiling_price,
                 "market_rate": market_rate,
-                "tier": tier,
+                "tier": 1 if tier == 5 else tier,
                 "decision": neg_result.get("decision"),
                 "counter_price": neg_result.get("counter_price"),
                 "message": neg_result.get("message"),
@@ -280,7 +299,7 @@ async def chat(req: ChatRequest):
                     print(f"Failed to auto-create order: {e}")
 
             reply = neg_result.get("message", "")
-            negotiation_result = {**neg_result, "record_id": record_id, "floor_price": floor_price, "market_rate": market_rate, "tier": tier}
+            negotiation_result = {**neg_result, "record_id": record_id, "floor_price": floor_price, "market_rate": market_rate, "tier": 1 if tier == 5 else tier}
             done = True
             state["stage"] = "done"
     except (json.JSONDecodeError, ValueError, KeyError):
@@ -297,17 +316,20 @@ async def chat(req: ChatRequest):
 async def _negotiate_response(
     buyer_name: str, product: str, quantity: float, offered_price: float,
     floor_price: float, ceiling_price: float, market_rate: float, unit: str, tier: int,
+    target_min_qty: int = None,
 ) -> dict:
     """Generate Gemini negotiation message for the given tier."""
+    min_qty = target_min_qty if target_min_qty else (max(int(quantity * 1.3), 50) if tier == 2 else None)
+    
     tier_instructions = {
         1: f"TIER 1 — ACCEPT: Buyer offered ₹{offered_price}/{unit} which meets/exceeds market rate ₹{market_rate}. Accept enthusiastically, confirm the deal. Be warm and grateful.",
-        2: f"TIER 2 — CONDITIONAL ACCEPT: Offer ₹{offered_price}/{unit} is below market ₹{market_rate} but above floor. Accept BUT require minimum {max(int(quantity*1.3),50)} {unit} order. Be friendly, firm on quantity.",
+        2: f"TIER 2 — CONDITIONAL ACCEPT: Offer ₹{offered_price}/{unit} is below market ₹{market_rate} but above floor. Accept BUT require minimum {min_qty} {unit} order. Be friendly, firm on quantity.",
         3: f"TIER 3 — COUNTER: Offer ₹{offered_price}/{unit} is slightly below floor ₹{floor_price}. Counter at ₹{round(floor_price*1.05,2)}/{unit}. Add urgency (limited stock/season). Warm but firm.",
         4: f"TIER 4 — REFUSE: Offer ₹{offered_price}/{unit} is too far below floor ₹{floor_price}. Politely refuse. Say you cannot go below cost price. Suggest they return when budget allows.",
+        5: f"TIER 5 — DEAL AGREED: Buyer agreed to our required minimum quantity of {quantity} {unit} at ₹{offered_price}/{unit}. Accept enthusiastically, confirm the deal. Be warm and grateful.",
     }
     counter_price = round(floor_price * 1.05, 2) if tier == 3 else None
-    min_qty = max(int(quantity * 1.3), 50) if tier == 2 else None
-    decisions = {1: "accept", 2: "accept_conditional", 3: "counter", 4: "refuse"}
+    decisions = {1: "accept", 2: "accept_conditional", 3: "counter", 4: "refuse", 5: "accept"}
 
     prompt = f"""You are StashBot, negotiating for a wholesale godown in India.
 Buyer: {buyer_name} | Product: {product} | Qty: {quantity} {unit} | Offered: ₹{offered_price}/{unit}
@@ -325,7 +347,7 @@ Then return ONLY this JSON (no markdown):
         result = _extract_json(raw)
     except Exception:
         # Deterministic fallback if AI generation is temporarily unavailable.
-        if tier == 1:
+        if tier == 1 or tier == 5:
             return {
                 "decision": "accept",
                 "counter_price": None,
@@ -335,7 +357,6 @@ Then return ONLY this JSON (no markdown):
                 "margin_protected": True,
             }
         if tier == 2:
-            min_qty = max(int(quantity * 1.3), 50)
             return {
                 "decision": "accept_conditional",
                 "counter_price": None,
