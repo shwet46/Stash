@@ -21,7 +21,7 @@ import Link from "next/link";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+91");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("");
@@ -32,7 +32,7 @@ export default function SignupPage() {
   const router = useRouter();
 
   const isNameValid = name.trim().length >= 2;
-  const isPhoneValid = /^[0-9]{10}$/.test(phone);
+  const isPhoneValid = /^\+91\d{10}$/.test(phone);
   const isPasswordValid = password.length >= 6;
   const isRoleValid = role === "ADMIN" || role === "WORKER";
   const nameError = !name
@@ -40,10 +40,10 @@ export default function SignupPage() {
     : !isNameValid
     ? "Name must be at least 2 characters."
     : "";
-  const phoneError = !phone
+  const phoneError = phone === "+91"
     ? "Phone number is required."
     : !isPhoneValid
-    ? "Enter a valid 10-digit phone number."
+    ? "Enter a valid 10-digit Indian phone number."
     : "";
   const passwordError = !password
     ? "Password is required."
@@ -196,12 +196,18 @@ export default function SignupPage() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    const localNumber = digits.startsWith("91")
+                      ? digits.slice(2, 12)
+                      : digits.slice(0, 10);
+                    setPhone(`+91${localNumber}`);
+                  }}
                   onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
-                  placeholder="10-digit number"
+                  placeholder="+91XXXXXXXXXX"
                   className={`input-field input-field--with-icon ${showPhoneError ? "input-field--error" : ""}`}
-                  inputMode="numeric"
-                  maxLength={10}
+                  inputMode="tel"
+                  maxLength={13}
                   autoComplete="tel"
                   aria-invalid={showPhoneError}
                   aria-describedby={showPhoneError ? "signup-phone-error" : "signup-phone-help"}
@@ -214,7 +220,7 @@ export default function SignupPage() {
                 </p>
               ) : (
                 <p className="input-helper" id="signup-phone-help">
-                  We will verify this number on first login.
+                  Country code +91 is added automatically.
                 </p>
               )}
             </div>

@@ -1,8 +1,11 @@
 """Telegram Bot API service — notifications, commands, and webhooks"""
 import httpx
+import logging
 from app.core.config import settings
+from app.services.firestore_service import firestore_service
 
 TELEGRAM_API = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
+logger = logging.getLogger(__name__)
 
 
 async def send_message(chat_id: int, text: str, parse_mode: str = "HTML") -> dict:
@@ -28,6 +31,138 @@ async def send_document(chat_id: int, document_url: str, caption: str = "") -> d
         )
     return response.json()
 
+def _phone_candidates(phone: str) -> list[str]:
+    raw = (phone or "").strip()
+    if not raw:
+        return []
+
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    candidates: list[str] = []
+
+    if len(digits) >= 12 and digits.startswith("91"):
+        local = digits[2:12]
+    elif len(digits) >= 10:
+        local = digits[-10:]
+    else:
+        local = ""
+
+    if local:
+        candidates.extend([f"+91{local}", local])
+
+    candidates.extend([raw, digits])
+
+    ordered_unique: list[str] = []
+    for candidate in candidates:
+        if candidate and candidate not in ordered_unique:
+            ordered_unique.append(candidate)
+    return ordered_unique
+
+
+def _canonical_phone(phone: str) -> str:
+    for candidate in _phone_candidates(phone):
+        if candidate.startswith("+91") and len(candidate) == 13:
+            return candidate
+    return _phone_candidates(phone)[0] if _phone_candidates(phone) else ""
+
+
+def _welcome_text() -> str:
+    return (
+        "<b>Welcome to Stash!</b>\n\n"
+        "We're excited to have you on board. Start managing your inventory with AI-powered voice commands.\n"
+        "Type /help to see what I can do."
+    )
+
+
+async def _find_user_doc_by_phone(phone: str):
+    if not firestore_service.is_enabled or not firestore_service.db:
+        return None
+
+    for phone_candidate in _phone_candidates(phone):
+        docs = (
+            firestore_service.db
+            .collection("users")
+            .where("phone", "==", phone_candidate)
+            .limit(1)
+            .stream()
+        )
+        async for doc in docs:
+            return doc
+    return None
+
+
+async def _link_pending_registration(phone: str, chat_id: int) -> bool:
+    """Attach Telegram chat_id to an already registered user if the number exists."""
+    user_doc = await _find_user_doc_by_phone(phone)
+    if not user_doc:
+        return False
+
+    await firestore_service.db.collection("users").document(user_doc.id).set(
+        {"telegram_chat_id": chat_id},
+        merge=True,
+    )
+    return True
+
+
+async def _save_phone_chat_link(phone: str, chat_id: int) -> None:
+    canonical = _canonical_phone(phone)
+    if not canonical or not firestore_service.is_enabled or not firestore_service.db:
+        return
+
+    await firestore_service.db.collection("telegram_links").document(canonical).set(
+        {"phone": canonical, "chat_id": int(chat_id)},
+        merge=True,
+    )
+
+
+async def _find_chat_id_from_phone_link(phone: str) -> int | None:
+    if not firestore_service.is_enabled or not firestore_service.db:
+        return None
+
+    for phone_candidate in _phone_candidates(phone):
+        doc = await firestore_service.db.collection("telegram_links").document(phone_candidate).get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            chat_id = data.get("chat_id")
+            if chat_id:
+                return int(chat_id)
+    return None
+
+
+async def send_welcome_message(chat_id: int) -> None:
+    """Send welcome message to a Telegram chat."""
+    if not chat_id:
+        return
+
+    try:
+        await send_message(int(chat_id), _welcome_text())
+    except Exception as exc:
+        logger.warning("Failed to send welcome message to chat %s: %s", chat_id, exc)
+
+
+async def send_welcome_message_by_phone(phone: str) -> bool:
+    """Send welcome message to the Telegram chat linked with this phone."""
+    if not firestore_service.is_enabled or not firestore_service.db:
+        return False
+
+    user_doc = await _find_user_doc_by_phone(phone)
+    if not user_doc:
+        return False
+
+    user = user_doc.to_dict() or {}
+    chat_id = user.get("telegram_chat_id")
+    if not chat_id:
+        chat_id = await _find_chat_id_from_phone_link(phone)
+        if chat_id:
+            await firestore_service.db.collection("users").document(user_doc.id).set(
+                {"telegram_chat_id": int(chat_id)},
+                merge=True,
+            )
+
+    if not chat_id:
+        return False
+
+    await send_welcome_message(int(chat_id))
+    return True
 
 async def send_order_confirmation(buyer, order) -> None:
     """Send order confirmation notification"""
@@ -155,12 +290,24 @@ async def handle_telegram_webhook(update: dict) -> None:
     if text.startswith("/start"):
         phone = text.replace("/start", "").strip()
         if phone:
-            # Link Telegram chat_id to buyer by phone number
-            # In production, this would query the database
-            await send_message(
-                chat_id,
-                "Welcome to Stash! Your account is now linked for order updates and invoices.",
-            )
+            linked = False
+            try:
+                await _save_phone_chat_link(phone, int(chat_id))
+                linked = await _link_pending_registration(phone, int(chat_id))
+            except Exception as exc:
+                logger.warning("Failed linking Telegram chat for phone %s: %s", phone, exc)
+
+            if linked:
+                await send_message(
+                    chat_id,
+                    "Your account is linked successfully. Sending your welcome message now.",
+                )
+                await send_welcome_message(int(chat_id))
+            else:
+                await send_message(
+                    chat_id,
+                    "We could not find an account for this number yet. Complete registration first, then send /start with your phone again.",
+                )
         else:
             await send_message(
                 chat_id,

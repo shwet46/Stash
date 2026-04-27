@@ -4,7 +4,7 @@ import FloatingVoiceAssistant from "@/components/shared/FloatingVoiceAssistant";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export const metadata: Metadata = {
-  title: "Stash AI",
+  title: "Stash",
   description: "Manage your godown operations from a single dashboard.",
 };
 

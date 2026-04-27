@@ -19,7 +19,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Stash — Voice-Native AI Supply Chain Platform",
+  title: "Stash",
   description:
     "Manage your godown with just your voice. AI-powered inventory, orders, suppliers, billing, and delivery management for India's warehouse operators. Supports Hindi, English, and 22 Indian languages.",
   keywords: [
@@ -31,9 +31,9 @@ export const metadata: Metadata = {
     "inventory management",
     "Hindi voice assistant",
   ],
-  authors: [{ name: "Stash AI" }],
+  authors: [{ name: "Stash" }],
   openGraph: {
-    title: "Stash — Voice-Native AI Supply Chain Platform",
+    title: "Stash",
     description:
       "Manage your godown with just your voice. No smartphone or literacy required.",
     type: "website",
