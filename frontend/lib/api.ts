@@ -365,3 +365,88 @@ export function subscribeToDashboard<T>(
 }
 
 export { API_BASE };
+
+// ─────────────────────────────────────────
+// Bartering / AI Negotiation
+// ─────────────────────────────────────────
+
+export interface NegotiateRequest {
+  product: string;
+  buyer_name: string;
+  offered_price: number;
+  quantity: number;
+  unit: string;
+  floor_price: number;
+  ceiling_price: number;
+  market_rate: number;
+  language?: string;
+  session_id?: string;
+}
+
+export interface NegotiateResult {
+  decision: "accept" | "accept_conditional" | "counter" | "refuse";
+  counter_price: number | null;
+  minimum_quantity: number | null;
+  message: string;
+  tier: 1 | 2 | 3 | 4;
+  tier_label: string;
+  margin_protected: boolean;
+  floor_price: number;
+  offered_price: number;
+  market_rate: number;
+  summary: string;
+  record_id: string;
+}
+
+export interface BarterSession {
+  id: string;
+  product: string;
+  unit: string;
+  floor_price: number;
+  ceiling_price: number;
+  market_rate: number;
+  available_stock: number;
+  notes?: string;
+  status: string;
+  created_at: string;
+}
+
+export async function negotiate(data: NegotiateRequest): Promise<NegotiateResult> {
+  return apiFetch<NegotiateResult>("/api/barter/negotiate", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function createBarterSession(data: {
+  product: string;
+  unit?: string;
+  floor_price: number;
+  ceiling_price: number;
+  market_rate: number;
+  available_stock?: number;
+  notes?: string;
+}): Promise<BarterSession> {
+  return apiFetch<BarterSession>("/api/barter/session", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getBarterHistory(): Promise<NegotiateResult[]> {
+  return apiFetch<NegotiateResult[]>("/api/barter/history");
+}
+
+export async function getTierRules() {
+  return apiFetch<{
+    tiers: {
+      tier: number;
+      name: string;
+      condition: string;
+      action: string;
+      color: string;
+    }[];
+    margin_protection: string;
+  }>("/api/barter/tier-rules");
+}
+
