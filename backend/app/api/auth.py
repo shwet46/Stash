@@ -23,15 +23,9 @@ def _phone_candidates(phone: str) -> list[str]:
     digits = "".join(ch for ch in raw if ch.isdigit())
     candidates: list[str] = []
 
-    if digits.startswith("91") and len(digits) >= 12:
-        local = digits[2:12]
-    elif len(digits) >= 10:
+    if len(digits) >= 10:
         local = digits[-10:]
-    else:
-        local = ""
-
-    if local:
-        candidates.extend([f"+91{local}", local])
+        candidates.extend([local, f"+91{local}"])
 
     candidates.extend([raw, digits])
 
@@ -43,16 +37,16 @@ def _phone_candidates(phone: str) -> list[str]:
     return ordered_unique
 
 
-def _normalize_indian_phone(phone: str) -> str:
+def _normalize_phone(phone: str) -> str:
     candidates = _phone_candidates(phone)
     if not candidates:
         raise HTTPException(status_code=400, detail="Phone number is required")
 
-    for candidate in candidates:
-        if candidate.startswith("+91") and len(candidate) == 13:
-            return candidate
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    if len(digits) == 10:
+        return digits
 
-    raise HTTPException(status_code=400, detail="Invalid Indian phone number")
+    raise HTTPException(status_code=400, detail="Invalid phone number")
 
 
 def get_current_user_phone(token: str = Depends(oauth2_scheme)) -> str:
@@ -96,7 +90,7 @@ async def _get_user_by_phone(phone: str):
 
 @router.post("/signup", response_model=UserResponse)
 async def signup(user_in: UserCreate):
-    normalized_phone = _normalize_indian_phone(user_in.phone)
+    normalized_phone = _normalize_phone(user_in.phone)
 
     # Check if user already exists
     existing_user = await _get_user_by_phone(normalized_phone)
@@ -118,7 +112,7 @@ async def signup(user_in: UserCreate):
         "phone": normalized_phone,
         "email": user_in.email,
         "hashed_password": get_password_hash(user_in.password),
-        "role": user_in.role,
+        "role": "admin",
         "created_at": now_iso
     }
 
@@ -127,7 +121,6 @@ async def signup(user_in: UserCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error storing user in Firestore: {e}")
 
-    # Welcome message should not block registration flow.
     try:
         await send_welcome_message_by_phone(normalized_phone)
     except Exception as exc:

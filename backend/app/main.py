@@ -48,9 +48,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f" Telegram webhook registration failed: {e}")
 
+    # Start background scheduler (reorder, reminders, delivery, prediction alerts)
+    try:
+        from app.workers.scheduler import setup_scheduler
+
+        setup_scheduler()
+    except Exception as e:
+        print(f"⚠ Scheduler startup failed: {e}")
+
     yield
 
     # Shutdown
+    try:
+        from app.workers.scheduler import scheduler
+
+        if scheduler.running:
+            scheduler.shutdown(wait=False)
+    except Exception as e:
+        print(f"⚠ Scheduler shutdown failed: {e}")
+
     print("Shutting down Stash Backend...")
 
 

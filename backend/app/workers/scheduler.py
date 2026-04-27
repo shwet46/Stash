@@ -31,6 +31,15 @@ async def run_delivery_check():
     print(f"⏰ Delivery check: {count} active deliveries")
 
 
+async def run_prediction_alerts():
+    """Scheduled: push model prediction alerts to Telegram"""
+    from app.workers.prediction_alerts import send_prediction_alerts
+
+    count = await send_prediction_alerts()
+    if count:
+        print(f"⏰ Prediction alerts: sent to {count} Telegram chats")
+
+
 def setup_scheduler():
     """Configure and start the scheduler"""
     # Check inventory every 30 minutes
@@ -46,5 +55,10 @@ def setup_scheduler():
         run_delivery_check, "interval", minutes=15, id="delivery_check"
     )
 
+    # Send inventory risk alerts based on model predictions every hour
+    scheduler.add_job(
+        run_prediction_alerts, "interval", minutes=60, id="prediction_alerts"
+    )
+
     scheduler.start()
-    print("📅 Scheduler started with 3 jobs")
+    print("📅 Scheduler started with 4 jobs")

@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_WEBHOOK_SECRET: str = ""
+    TELEGRAM_CHAT_ID: str = ""
 
     # Auth
     SECRET_KEY: str = "stash-secret-key-change-in-production"

@@ -25,6 +25,8 @@ const techCategories = [
     items: [
       { name: "Gemini 3.0 Flash", desc: "NLP Intent Extraction" },
       { name: "Vertex AI", desc: "Forecasting Models" },
+      { name: "XGBoost", desc: "Stockout Risk Modeling" },
+      { name: "LSTM", desc: "Demand Time-Series Forecasting" },
       { name: "Cloud STT v2", desc: "Voice Processing" },
       { name: "Google Cloud TTS", desc: "Voice Response" },
     ],
@@ -34,7 +36,6 @@ const techCategories = [
     items: [
       { name: "Cloud Run", desc: "Backend Hosting" },
       { name: "Firestore", desc: "Real-time NoSQL" },
-      { name: "BigQuery", desc: "Data Warehouse" },
       { name: "Pub/Sub", desc: "Event Streaming" },
     ],
   },

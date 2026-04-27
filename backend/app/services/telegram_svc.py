@@ -1,11 +1,22 @@
 """Telegram Bot API service — notifications, commands, and webhooks"""
 import httpx
 import logging
+import re
+from datetime import datetime
+
 from app.core.config import settings
 from app.services.firestore_service import firestore_service
+from app.services.ml_pipeline import predict_stockout
 
 TELEGRAM_API = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
 logger = logging.getLogger(__name__)
+
+_INVENTORY_HINTS = {
+    "inventory", "stock", "stocks", "qty", "quantity", "available", "left", "how much", "balance"
+}
+_ALERT_HINTS = {
+    "alert", "alerts", "prediction", "predictions", "stockout", "risk", "risks", "forecast", "reorder"
+}
 
 
 async def send_message(chat_id: int, text: str, parse_mode: str = "HTML") -> dict:
@@ -15,7 +26,10 @@ async def send_message(chat_id: int, text: str, parse_mode: str = "HTML") -> dic
             f"{TELEGRAM_API}/sendMessage",
             json={"chat_id": chat_id, "text": text, "parse_mode": parse_mode},
         )
-    return response.json()
+    payload = response.json()
+    if not payload.get("ok"):
+        raise RuntimeError(payload.get("description", "Telegram API error"))
+    return payload
 
 
 async def send_document(chat_id: int, document_url: str, caption: str = "") -> dict:
@@ -29,7 +43,270 @@ async def send_document(chat_id: int, document_url: str, caption: str = "") -> d
                 "caption": caption,
             },
         )
-    return response.json()
+    payload = response.json()
+    if not payload.get("ok"):
+        raise RuntimeError(payload.get("description", "Telegram API error"))
+    return payload
+
+
+def _to_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_query_text(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _extract_inventory_search_term(text: str) -> str | None:
+    normalized = _normalize_query_text(text)
+    if not normalized:
+        return None
+
+    cleaned = re.sub(r"^/inventory", "", normalized).strip()
+    if cleaned and cleaned != normalized:
+        return cleaned
+
+    m = re.search(r"(?:stock|inventory|quantity|qty)\s+(?:of\s+)?([a-z0-9\s\-]{2,})", normalized)
+    if m:
+        candidate = m.group(1).strip(" .?!")
+        if candidate:
+            return candidate
+
+    return None
+
+
+def _looks_like_inventory_query(text: str) -> bool:
+    normalized = _normalize_query_text(text)
+    if normalized.startswith("/inventory"):
+        return True
+    return any(hint in normalized for hint in _INVENTORY_HINTS)
+
+
+def _looks_like_alert_query(text: str) -> bool:
+    normalized = _normalize_query_text(text)
+    if normalized.startswith("/alerts"):
+        return True
+    return any(hint in normalized for hint in _ALERT_HINTS)
+
+
+def _prediction_priority(urgency: str) -> int:
+    return {"high": 0, "medium": 1, "low": 2}.get((urgency or "").lower(), 3)
+
+
+def _map_category_for_prediction(raw: str | None) -> str:
+    value = (raw or "general").strip().lower()
+    mapping = {
+        "grain": "Grain",
+        "grains": "Grain",
+        "rice": "Grain",
+        "wheat": "Grain",
+        "fmcg": "FMCG",
+        "construction": "Construction",
+        "electronics": "Electronics",
+    }
+    return mapping.get(value, "FMCG")
+
+
+def _estimate_demand_features(item: dict) -> tuple[float, float, float, float]:
+    stock = _to_float(item.get("current_stock"), 0.0)
+    threshold = max(_to_float(item.get("threshold"), 10.0), 1.0)
+
+    avg_30 = max(threshold / 10.0, 0.5)
+    pressure = max((threshold - stock) / threshold, 0.0)
+    avg_7 = max(avg_30 * (1.0 + pressure), 0.5)
+    sales_yesterday = max(avg_7 * 0.9, 0.1)
+    demand_growth = (avg_7 - avg_30) / avg_30 if avg_30 > 0 else 0.0
+    return avg_7, avg_30, sales_yesterday, demand_growth
+
+
+async def _fetch_inventory_items(search_term: str | None = None, limit: int = 8) -> list[dict]:
+    if not firestore_service.is_enabled or not firestore_service.db:
+        return []
+
+    docs = firestore_service.db.collection("inventory").stream()
+    items: list[dict] = []
+    search = (search_term or "").strip().lower()
+
+    async for doc in docs:
+        item = doc.to_dict() or {}
+        product_name = str(item.get("product_name", "")).strip()
+        if not product_name:
+            continue
+        if search and search not in product_name.lower():
+            continue
+
+        stock = _to_float(item.get("current_stock"), 0.0)
+        threshold = _to_float(item.get("threshold"), 0.0)
+        if stock < threshold * 0.5:
+            status = "critical"
+        elif stock < threshold:
+            status = "low"
+        else:
+            status = "healthy"
+
+        item["id"] = doc.id
+        item["status"] = status
+        items.append(item)
+
+    items.sort(key=lambda x: (_prediction_priority(x.get("status", "")), str(x.get("product_name", "")).lower()))
+    return items[:limit]
+
+
+def _format_inventory_reply(items: list[dict], search_term: str | None) -> str:
+    if not items:
+        if search_term:
+            return f"I could not find inventory for '{search_term}'. Try /inventory without filters to see all items."
+        return "No inventory data found yet. Add stock first, then ask again."
+
+    title = "<b>Inventory Snapshot</b>"
+    if search_term:
+        title = f"<b>Inventory for '{search_term}'</b>"
+
+    lines = [title, ""]
+    for item in items:
+        unit = item.get("unit", "units")
+        lines.append(
+            f"- <b>{item.get('product_name', 'Unknown')}</b>: { _to_float(item.get('current_stock'), 0):g} {unit}"
+            f" (threshold { _to_float(item.get('threshold'), 0):g}, status {item.get('status', 'healthy')})"
+        )
+
+    lines.append("")
+    lines.append("Ask naturally, for example: 'How much rice is left in inventory?'")
+    return "\n".join(lines)
+
+
+async def _build_prediction_alert_candidates(limit: int = 10) -> list[dict]:
+    if not firestore_service.is_enabled or not firestore_service.db:
+        return []
+
+    docs = firestore_service.db.collection("inventory").stream()
+    alerts: list[dict] = []
+
+    async for doc in docs:
+        item = doc.to_dict() or {}
+        product_name = str(item.get("product_name", "Unknown"))
+        current_stock = _to_float(item.get("current_stock"), 0.0)
+        category = _map_category_for_prediction(item.get("category"))
+
+        avg_7, avg_30, sales_yesterday, growth = _estimate_demand_features(item)
+        prediction = predict_stockout(
+            product_name=product_name,
+            category=category,
+            current_stock=current_stock,
+            avg_daily_sales_7d=avg_7,
+            avg_daily_sales_30d=avg_30,
+            sales_yesterday=sales_yesterday,
+            demand_growth_pct=growth,
+            lead_time_days=3,
+            supplier_reliability=80.0,
+        )
+
+        if not prediction.get("stockout_predicted") and prediction.get("urgency_level") == "Low":
+            continue
+
+        alerts.append(
+            {
+                "item_id": doc.id,
+                "product_name": product_name,
+                "current_stock": current_stock,
+                "unit": item.get("unit", "units"),
+                "urgency_level": prediction.get("urgency_level", "Low"),
+                "days_to_stockout_estimate": int(prediction.get("days_to_stockout_estimate", 999) or 999),
+                "confidence": float(prediction.get("confidence", 0.0) or 0.0),
+                "recommended_reorder_qty": int(prediction.get("recommended_reorder_qty", 0) or 0),
+                "reason": prediction.get("recommendation_reason", ""),
+            }
+        )
+
+    alerts.sort(key=lambda a: (_prediction_priority(a.get("urgency_level", "")), a.get("days_to_stockout_estimate", 999)))
+    return alerts[:limit]
+
+
+def _format_prediction_alerts(alerts: list[dict]) -> str:
+    if not alerts:
+        return "<b>Prediction Alerts</b>\n\nNo immediate stockout risks right now."
+
+    lines = ["<b>Prediction Alerts</b>", ""]
+    for alert in alerts:
+        lines.append(
+            f"- <b>{alert['product_name']}</b>: {alert['urgency_level']} risk, "
+            f"stockout in ~{alert['days_to_stockout_estimate']} day(s), "
+            f"confidence {alert['confidence'] * 100:.1f}%, "
+            f"reorder {alert['recommended_reorder_qty']} {alert['unit']}"
+        )
+    return "\n".join(lines)
+
+
+async def _resolve_owner_chat_ids() -> list[int]:
+    recipients: list[int] = []
+
+    configured_chat_id = getattr(settings, "TELEGRAM_CHAT_ID", "")
+    if configured_chat_id:
+        try:
+            recipients.append(int(configured_chat_id))
+        except ValueError:
+            logger.warning("Invalid TELEGRAM_CHAT_ID configured: %s", configured_chat_id)
+
+    if firestore_service.is_enabled and firestore_service.db:
+        docs = firestore_service.db.collection("users").stream()
+        async for doc in docs:
+            user = doc.to_dict() or {}
+            role = str(user.get("role", "")).lower()
+            chat_id = user.get("telegram_chat_id")
+            if role in {"owner", "admin"} and chat_id:
+                try:
+                    recipients.append(int(chat_id))
+                except (TypeError, ValueError):
+                    continue
+
+    return list(dict.fromkeys(recipients))
+
+
+async def send_prediction_alerts_to_owners(limit: int = 5) -> int:
+    """Push model prediction alerts to owner/admin Telegram chats."""
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return 0
+
+    alerts = await _build_prediction_alert_candidates(limit=limit)
+    if not alerts:
+        return 0
+
+    recipients = await _resolve_owner_chat_ids()
+    if not recipients:
+        return 0
+
+    delivered = 0
+    signature = "|".join(
+        f"{a['item_id']}:{a['urgency_level']}:{a['days_to_stockout_estimate']}:{a['recommended_reorder_qty']}"
+        for a in alerts
+    )
+
+    for chat_id in recipients:
+        should_send = True
+        if firestore_service.is_enabled and firestore_service.db:
+            state_ref = firestore_service.db.collection("telegram_prediction_alert_state").document(str(chat_id))
+            state_doc = await state_ref.get()
+            if state_doc.exists:
+                state = state_doc.to_dict() or {}
+                if state.get("signature") == signature:
+                    should_send = False
+
+        if not should_send:
+            continue
+
+        await send_message(chat_id, _format_prediction_alerts(alerts))
+        delivered += 1
+
+        if firestore_service.is_enabled and firestore_service.db:
+            await firestore_service.db.collection("telegram_prediction_alert_state").document(str(chat_id)).set(
+                {"signature": signature, "last_sent_at": datetime.utcnow().isoformat()},
+                merge=True,
+            )
+
+    return delivered
 
 def _phone_candidates(phone: str) -> list[str]:
     raw = (phone or "").strip()
@@ -163,6 +440,55 @@ async def send_welcome_message_by_phone(phone: str) -> bool:
 
     await send_welcome_message(int(chat_id))
     return True
+
+
+async def send_registration_notification(name: str, phone: str, role: str = "admin") -> bool:
+    """Notify the configured admin chat about a new registration."""
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return False
+
+    recipients: list[int] = []
+    configured_chat_id = getattr(settings, "TELEGRAM_CHAT_ID", "")
+    if configured_chat_id:
+        try:
+            recipients.append(int(configured_chat_id))
+        except ValueError:
+            logger.warning("Invalid TELEGRAM_CHAT_ID configured: %s", configured_chat_id)
+
+    if not recipients and firestore_service.is_enabled and firestore_service.db:
+        try:
+            docs = firestore_service.db.collection("users").stream()
+            async for doc in docs:
+                data = doc.to_dict() or {}
+                role_value = str(data.get("role", "")).lower()
+                chat_id = data.get("telegram_chat_id")
+                if role_value in {"admin", "owner"} and chat_id:
+                    recipients.append(int(chat_id))
+        except Exception as exc:
+            logger.warning("Failed to resolve Telegram registration recipients: %s", exc)
+
+    if not recipients:
+        logger.warning("No Telegram recipient configured for registration notification")
+        return False
+
+    unique_recipients = list(dict.fromkeys(recipients))
+
+    text = (
+        f"<b>New Registration — Stash</b>\n\n"
+        f"Name: {name}\n"
+        f"Phone: {phone}\n"
+        f"Role: {role}"
+    )
+
+    delivered = False
+    try:
+        for recipient_chat_id in unique_recipients:
+            await send_message(int(recipient_chat_id), text)
+            delivered = True
+        return delivered
+    except Exception as exc:
+        logger.warning("Failed to send registration notification to Telegram: %s", exc)
+        return False
 
 async def send_order_confirmation(buyer, order) -> None:
     """Send order confirmation notification"""
@@ -314,35 +640,28 @@ async def handle_telegram_webhook(update: dict) -> None:
                 "Welcome to Stash! Send /start {your phone number} to link your account.",
             )
 
-    elif text.startswith("/status"):
-        order_ref = text.replace("/status", "").strip()
-        if order_ref:
-            await send_message(chat_id, f"Looking up order {order_ref}...")
-            # In production, query order status from database
-        else:
-            await send_message(chat_id, "Usage: /status {order_id}")
+    elif _looks_like_inventory_query(text):
+        search_term = _extract_inventory_search_term(text)
+        items = await _fetch_inventory_items(search_term=search_term, limit=8)
+        await send_message(chat_id, _format_inventory_reply(items, search_term))
 
-    elif text.startswith("/invoice"):
-        order_ref = text.replace("/invoice", "").strip()
-        if order_ref:
-            await send_message(chat_id, f"Fetching invoice for {order_ref}...")
-            # In production, retrieve and send invoice PDF
-        else:
-            await send_message(chat_id, "Usage: /invoice {order_id}")
+    elif _looks_like_alert_query(text):
+        alerts = await _build_prediction_alert_candidates(limit=5)
+        await send_message(chat_id, _format_prediction_alerts(alerts))
 
     elif text.startswith("/help"):
         await send_message(
             chat_id,
             "<b>Stash Bot Commands</b>\n\n"
             "/start {phone} — Link your account\n"
-            "/status {order_id} — Check order status\n"
-            "/invoice {order_id} — Get invoice PDF\n"
+            "/inventory {product?} — Ask inventory levels\n"
+            "/alerts — Show model prediction alerts\n"
             "/help — Show this menu",
         )
     else:
         await send_message(
             chat_id,
-            "I didn't understand that. Send /help to see available commands.",
+            "I can help with inventory and prediction alerts. Try: /inventory, /alerts, or /help.",
         )
 
 

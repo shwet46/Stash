@@ -41,9 +41,11 @@ export default function TechStackPage() {
           <div className="grid-2" style={{ gap: '4rem' }}>
              {[
                { icon: <Cpu />, name: "Gemini 3.0 Flash", desc: "Our primary LLM for real-time multilingual audio transcription and intent extraction. Optimized for speed and accuracy in logistics context." },
-               { icon: <Cloud />, name: "Vertex AI", desc: "Infrastructure for deploying custom predictive models for stockout forecasting and disruption risk analysis." },
+               { icon: <Cloud />, name: "Vertex AI", desc: "Infrastructure for training and serving predictive models for stockout forecasting and disruption risk analysis." },
+               { icon: <Cpu />, name: "XGBoost", desc: "Gradient-boosted tree model used for stockout risk scoring and reorder quantity recommendations from structured inventory features." },
+               { icon: <Cpu />, name: "LSTM", desc: "Sequence model used for demand trend forecasting from time-series sales behavior and short-term seasonal patterns." },
                { icon: <Phone />, name: "Twilio Programmable Voice", desc: "Reliable telephony gateway handling inbound and outbound calls from even the most remote regions in India." },
-               { icon: <Database />, name: "Google Firestore + BigQuery", desc: "NoSQL document storage for real-time state sync and BigQuery for large-scale historical analytics and reporting." }
+               { icon: <Database />, name: "Google Firestore", desc: "NoSQL document storage for real-time state sync, inventory updates, and operational dashboards." }
              ].map((tech, i) => (
                <motion.div 
                  key={i}

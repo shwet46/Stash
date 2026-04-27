@@ -4,62 +4,51 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  LuWarehouse as Warehouse, 
   LuArrowRight as ArrowRight, 
   LuUser as UserIcon, 
   LuPhone as PhoneIcon, 
   LuLock as LockIcon, 
-  LuShieldCheck as ShieldIcon, 
   LuEye as EyeIcon, 
   LuEyeOff as EyeOffIcon,
   LuTriangleAlert as AlertIcon
 } from "react-icons/lu";
 import StashIcon from "@/components/shared/StashIcon";
 
-import Button from "@/components/ui/Button";
 import Link from "next/link";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("+91");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [touched, setTouched] = useState({ name: false, phone: false, password: false, role: false });
+  const [touched, setTouched] = useState({ name: false, phone: false, password: false });
   const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
 
   const isNameValid = name.trim().length >= 2;
-  const isPhoneValid = /^\+91\d{10}$/.test(phone);
+  const isPhoneValid = /^\d{10}$/.test(phone);
   const isPasswordValid = password.length >= 6;
-  const isRoleValid = role === "ADMIN" || role === "WORKER";
   const nameError = !name
     ? "Full name is required."
     : !isNameValid
     ? "Name must be at least 2 characters."
     : "";
-  const phoneError = phone === "+91"
+  const phoneError = !phone
     ? "Phone number is required."
     : !isPhoneValid
-    ? "Enter a valid 10-digit Indian phone number."
+    ? "Enter a valid 10-digit phone number."
     : "";
   const passwordError = !password
     ? "Password is required."
     : !isPasswordValid
     ? "Password must be at least 6 characters."
     : "";
-  const roleError = !role
-    ? "Select a role to continue."
-    : !isRoleValid
-    ? "Please select a valid role."
-    : "";
   const showNameError = (touched.name || submitted) && Boolean(nameError);
   const showPhoneError = (touched.phone || submitted) && Boolean(phoneError);
   const showPasswordError = (touched.password || submitted) && Boolean(passwordError);
-  const showRoleError = (touched.role || submitted) && Boolean(roleError);
-  const isFormValid = isNameValid && isPhoneValid && isPasswordValid && isRoleValid;
+  const isFormValid = isNameValid && isPhoneValid && isPasswordValid;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +65,7 @@ export default function SignupPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/auth/signup`, {
         method: "POST",
-        body: JSON.stringify({ name, phone, password, role }),
+        body: JSON.stringify({ name, phone, password }),
         headers: { "Content-Type": "application/json" },
       });
 
@@ -197,17 +186,13 @@ export default function SignupPage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    const localNumber = digits.startsWith("91")
-                      ? digits.slice(2, 12)
-                      : digits.slice(0, 10);
-                    setPhone(`+91${localNumber}`);
+                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
                   }}
                   onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
-                  placeholder="+91XXXXXXXXXX"
+                  placeholder="10-digit phone number"
                   className={`input-field input-field--with-icon ${showPhoneError ? "input-field--error" : ""}`}
                   inputMode="tel"
-                  maxLength={13}
+                  maxLength={10}
                   autoComplete="tel"
                   aria-invalid={showPhoneError}
                   aria-describedby={showPhoneError ? "signup-phone-error" : "signup-phone-help"}
@@ -220,7 +205,7 @@ export default function SignupPage() {
                 </p>
               ) : (
                 <p className="input-helper" id="signup-phone-help">
-                  Country code +91 is added automatically.
+                  Enter the mobile number linked to your account.
                 </p>
               )}
             </div>
@@ -258,39 +243,6 @@ export default function SignupPage() {
               ) : (
                 <p className="input-helper" id="signup-password-help">
                   Use at least 6 characters.
-                </p>
-              )}
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Account Role</label>
-              <div className="input-wrapper">
-                <div className="input-icon">
-                  <ShieldIcon size={16} />
-                </div>
-                <select 
-                  value={role} 
-                  onChange={(e) => setRole(e.target.value)}
-                  onBlur={() => setTouched((prev) => ({ ...prev, role: true }))}
-                  className={`input-field input-field--with-icon form-select ${showRoleError ? "input-field--error" : ""}`}
-                  aria-invalid={showRoleError}
-                  aria-describedby={showRoleError ? "signup-role-error" : "signup-role-help"}
-                  required
-                >
-                  <option value="" disabled>
-                    Select a role
-                  </option>
-                  <option value="ADMIN">Godown Owner / Admin</option>
-                  <option value="WORKER">Worker</option>
-                </select>
-              </div>
-              {showRoleError ? (
-                <p className="input-error" id="signup-role-error">
-                  {roleError}
-                </p>
-              ) : (
-                <p className="input-helper" id="signup-role-help">
-                  Choose the access level for this account.
                 </p>
               )}
             </div>

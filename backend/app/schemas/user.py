@@ -7,7 +7,7 @@ class UserBase(BaseModel):
     name: str
     phone: str
     email: Optional[EmailStr] = None
-    role: str = "worker"
+    role: str = "admin"
 
 class UserCreate(UserBase):
     password: str

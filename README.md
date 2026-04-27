@@ -69,6 +69,8 @@ uv run uvicorn app.main:app --reload
 ```
 *Note: Make sure you have Python 3.12+ and `uv` installed.*
 
+Telegram registration alerts require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to be set in your environment. The chat ID must belong to a chat that has already started the bot.
+
 #### 3. Set up the Frontend
 Navigate to the `frontend` directory and install the Node dependencies.
 ```bash
