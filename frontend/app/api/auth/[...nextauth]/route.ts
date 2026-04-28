@@ -1,11 +1,13 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const serverApiUrl =
+const rawServerApiUrl =
   process.env.INTERNAL_API_URL ||
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:8000";
+  "https://stash-backend-2qjk.onrender.com";
+
+const serverApiUrl = rawServerApiUrl.replace(/\/$/, "");
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -18,11 +20,13 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.phone || !credentials?.password) return null;
 
+        const normalizedPhone = String(credentials.phone).replace(/\D/g, "");
+
         try {
           const res = await fetch(`${serverApiUrl}/api/auth/login`, {
             method: "POST",
             body: JSON.stringify({
-              phone: credentials.phone,
+              phone: normalizedPhone,
               password: credentials.password,
             }),
             headers: { "Content-Type": "application/json" },
@@ -57,6 +61,14 @@ export const authOptions: NextAuthOptions = {
               };
             }
           }
+
+          if (!res.ok) {
+            console.error("Auth login rejected", {
+              status: res.status,
+              detail: data?.detail || raw?.slice(0, 200),
+            });
+          }
+
           return null;
         } catch (error) {
           console.error("Auth error:", error);
