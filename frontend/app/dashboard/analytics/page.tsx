@@ -14,8 +14,9 @@ import {
 } from "react-icons/lu";
 import StatCard from "@/components/dashboard/StatCard";
 import Button from "@/components/ui/Button";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = CLIENT_BACKEND_URL;
 
 const revenueData = [
   { name: "Mon", revenue: 45000, orders: 120 },

@@ -1,13 +1,8 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { SERVER_BACKEND_URL } from "@/lib/backend-url";
 
-const rawServerApiUrl =
-  process.env.INTERNAL_API_URL ||
-  process.env.BACKEND_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://stash-backend-2qjk.onrender.com";
-
-const serverApiUrl = rawServerApiUrl.replace(/\/$/, "");
+const serverApiUrl = SERVER_BACKEND_URL;
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -93,6 +88,22 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).phone = token.phone;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+
+      try {
+        const parsed = new URL(url);
+        if (parsed.origin === baseUrl) {
+          return url;
+        }
+      } catch {
+        // Fall through to safe default.
+      }
+
+      return `${baseUrl}/dashboard`;
     }
   },
   pages: {

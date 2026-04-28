@@ -16,8 +16,9 @@ import {
   LuCheck as Check,
   LuActivity as Activity,
 } from "react-icons/lu";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const API = CLIENT_BACKEND_URL;
 
 // ─── Chart Colors (Stash Project Theme) ───────────────────────────────────────
 const CHART_COLORS = ["#d4956a", "#108548", "#1a73e8", "#f29900", "#6b4226"];

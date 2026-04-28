@@ -14,6 +14,7 @@ import {
 } from "react-icons/lu";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
 
 export default function WorkerDashboardView() {
   const { data: session } = useSession();
@@ -92,7 +93,7 @@ export default function WorkerDashboardView() {
     formData.append("language_hint", navigator.language.startsWith("hi") ? "hi-IN" : "en-IN");
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/voice/web`, {
+      const response = await fetch(`${CLIENT_BACKEND_URL}/api/voice/web`, {
         method: "POST",
         body: formData,
       });

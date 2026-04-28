@@ -9,8 +9,9 @@ import {
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import SearchInput from "@/components/ui/SearchInput";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = CLIENT_BACKEND_URL;
 
 interface Bill {
   id: string;

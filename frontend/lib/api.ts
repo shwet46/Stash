@@ -2,7 +2,9 @@
  * Extended API client with role-specific dashboard endpoints and SSE support.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
+
+const API_BASE = CLIENT_BACKEND_URL;
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;

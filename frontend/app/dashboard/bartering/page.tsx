@@ -4,8 +4,9 @@ import {
   LuBot, LuUser, LuSend, LuShieldCheck, LuMic, LuMicOff,
   LuRefreshCw, LuCircleCheck, LuCircleX, LuPackage, LuVolume2, LuVolumeX, LuChevronDown,
 } from "react-icons/lu";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const API_BASE = CLIENT_BACKEND_URL;
 const CHAT_REQUEST_TIMEOUT_MS = 18000;
 
 const PRODUCTS = [

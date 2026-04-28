@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { LuPrinter, LuDownload, LuSend, LuArrowLeft, LuCircleCheck, LuClock, LuTriangleAlert } from "react-icons/lu";
+import { CLIENT_BACKEND_URL } from "@/lib/backend-url";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = CLIENT_BACKEND_URL;
 
 interface Bill {
   id: string;
