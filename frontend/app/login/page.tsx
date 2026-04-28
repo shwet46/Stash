@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   LuWarehouse as Warehouse, 
@@ -27,7 +27,6 @@ export default function LoginPage() {
   const [touched, setTouched] = useState({ phone: false, password: false });
   const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const isPhoneValid = /^\d{10}$/.test(phone);
   const isPasswordValid = password.length >= 6;
@@ -56,7 +55,10 @@ export default function LoginPage() {
     
     setLoading(true);
     try {
-      const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+      const callbackUrl =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("callbackUrl") || "/dashboard"
+          : "/dashboard";
       const res = await signIn("credentials", {
         phone,
         password,
