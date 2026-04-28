@@ -44,6 +44,23 @@ export default function LoginPage() {
   const showPasswordError = (touched.password || submitted) && Boolean(passwordError);
   const isFormValid = isPhoneValid && isPasswordValid;
 
+  const normalizeCallbackUrl = (candidate: string) => {
+    if (!candidate) {
+      return "/dashboard";
+    }
+
+    try {
+      const parsed = new URL(candidate, window.location.origin);
+      if (candidate.startsWith("/") || parsed.origin === window.location.origin) {
+        return `${parsed.pathname}${parsed.search}${parsed.hash}` || "/dashboard";
+      }
+    } catch {
+      // Fall back to the default dashboard route below.
+    }
+
+    return "/dashboard";
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -55,10 +72,11 @@ export default function LoginPage() {
     
     setLoading(true);
     try {
-      const callbackUrl =
+      const callbackUrl = normalizeCallbackUrl(
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("callbackUrl") || "/dashboard"
-          : "/dashboard";
+          : "/dashboard"
+      );
       const res = await signIn("credentials", {
         phone,
         password,
@@ -69,7 +87,7 @@ export default function LoginPage() {
       if (res?.error || !res?.ok) {
         setError("Invalid credentials. Please try again.");
       } else {
-        const target = res.url || callbackUrl;
+        const target = normalizeCallbackUrl(res.url || callbackUrl);
         if (target.startsWith("http")) {
           window.location.assign(target);
         } else {
