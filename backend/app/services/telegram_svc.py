@@ -3,10 +3,13 @@ import httpx
 import logging
 import re
 from datetime import datetime
+from urllib.parse import urlparse
 
 from app.core.config import settings
 from app.services.firestore_service import firestore_service
 from app.services.ml_pipeline import predict_stockout
+from app.services.gemini import extract_intent_and_entities
+from app.services.intent_handler import handle_intent
 
 TELEGRAM_API = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
 logger = logging.getLogger(__name__)
@@ -91,6 +94,180 @@ def _looks_like_alert_query(text: str) -> bool:
         return True
     return any(hint in normalized for hint in _ALERT_HINTS)
 
+def _looks_like_stock_add_query(text: str) -> bool:
+    normalized = _normalize_query_text(text)
+    if not normalized:
+        return False
+
+    add_hints = (
+        "add",
+        "added",
+        "receive",
+        "received",
+        "got",
+        "arrived",
+        "stock arrived",
+        "new stock",
+        "restock",
+        "update inventory",
+        "inventory update",
+        "put",
+        "put in",
+    )
+    inventory_hints = (
+        "inventory",
+        "stock",
+        "stocks",
+        "warehouse",
+        "godown",
+        "item",
+        "items",
+        "product",
+        "products",
+    )
+
+    if any(hint in normalized for hint in add_hints) and any(hint in normalized for hint in inventory_hints):
+        return True
+
+    # If message contains a quantity (e.g. "2kg") and an add-like verb, treat as stock addition
+    if re.search(r"\d+(?:\.\d+)?\s*(kg|kgs|g|ltr|l|pcs|units|bgs|bags)?", normalized) and any(hint in normalized for hint in add_hints):
+        return True
+
+    return normalized.startswith("add ") or normalized.startswith("received ") or normalized.startswith("restock ") or normalized.startswith("we received")
+
+
+def _parse_stock_text(text: str) -> dict:
+    """Best-effort parse of stock arrival text.
+    Returns keys: product, quantity, unit, expiry_date, supplier
+    expiry_date is ISO YYYY-MM-DD when parsable.
+    """
+    parsed: dict = {}
+    if not text:
+        return parsed
+
+    normalized = text.strip()
+
+    # Quantity + unit (e.g. 2kg, 2 kg, 2 kg sugar)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(kg|kgs|g|ltr|l|pcs|units|kg\.|kg|bgs|bags)?", normalized, re.IGNORECASE)
+    if m:
+        try:
+            parsed["quantity"] = float(m.group(1))
+        except Exception:
+            parsed["quantity"] = None
+        unit = (m.group(2) or "").lower()
+        if unit:
+            # normalize some common units
+            if unit in ("kgs", "kg."):
+                unit = "kg"
+            if unit in ("l", "ltr"):
+                unit = "ltr"
+            parsed["unit"] = unit
+
+    # Expiry date patterns (YYYY-MM-DD, Dec 31 2026, 31 Dec 2026)
+    date_match = None
+    # ISO
+    m_iso = re.search(r"(\d{4}-\d{2}-\d{2})", normalized)
+    if m_iso:
+        date_match = m_iso.group(1)
+    else:
+        # e.g. Dec 31 2026 or 31 Dec 2026
+        m_nice = re.search(r"([A-Za-z]{3,9}\s+\d{1,2}\s+\d{4})", normalized)
+        if m_nice:
+            date_match = m_nice.group(1)
+        else:
+            m_alt = re.search(r"(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})", normalized)
+            if m_alt:
+                date_match = m_alt.group(1)
+
+    if date_match:
+        for fmt in ("%Y-%m-%d", "%b %d %Y", "%B %d %Y", "%d %b %Y", "%d %B %Y"):
+            try:
+                dt = datetime.strptime(date_match, fmt)
+                parsed["expiry_date"] = dt.date().isoformat()
+                break
+            except Exception:
+                continue
+
+    # Supplier hint
+    m_sup = re.search(r"from\s+([A-Za-z0-9 &.-]{2,40})", normalized, re.IGNORECASE)
+    if m_sup:
+        parsed["supplier"] = m_sup.group(1).strip()
+
+    # Product: try to find word after quantity or after keywords like 'received' / 'we received'
+    prod = None
+    if "quantity" in parsed or "quantity" in parsed:
+        # try product after quantity match
+        if m:
+            rest = normalized[m.end():].strip()
+            # stop at 'with' or 'from' or 'expiry'
+            rest = re.split(r"\bwith\b|\bfrom\b|\bexpiry|\bon\b", rest, flags=re.IGNORECASE)[0].strip()
+            if rest:
+                prod = rest
+    if not prod:
+        # fallback: remove common prefixes
+        cleaned = re.sub(r"^(we\s+)?(received|got|added|add|restock)\b", "", normalized, flags=re.IGNORECASE).strip()
+        cleaned = re.split(r"\bfrom\b|\bwith\b|\bexpiry|\bon\b", cleaned, flags=re.IGNORECASE)[0].strip()
+        if cleaned:
+            prod = cleaned
+
+    if prod:
+        # take first few words as product
+        prod_words = prod.split()
+        parsed["product"] = " ".join(prod_words[:4]).strip().strip(".,")
+
+    return parsed
+
+
+def _looks_like_delivery_query(text: str) -> bool:
+    normalized = _normalize_query_text(text)
+    if not normalized:
+        return False
+    if normalized.startswith("/deliveries") or "delivery" in normalized or "deliveries" in normalized:
+        return True
+    return False
+
+def _looks_like_order_analytics_query(text: str) -> bool:
+    normalized = _normalize_query_text(text)
+    if not normalized:
+        return False
+
+    analytics_hints = (
+        "analytics",
+        "analysis",
+        "analytics report",
+        "dashboard",
+        "summary",
+        "stats",
+        "metrics",
+        "report",
+        "performance",
+        "trend",
+        "trends",
+        "revenue",
+        "sales",
+    )
+    order_hints = (
+        "order",
+        "orders",
+        "booking",
+        "bookings",
+        "dispatch",
+        "delivery",
+        "payment",
+    )
+
+    if any(hint in normalized for hint in analytics_hints) and any(hint in normalized for hint in order_hints):
+        return True
+
+    return normalized in {
+        "tell me order analytics",
+        "order analytics",
+        "show me order analytics",
+        "give me order analytics",
+        "how are orders doing",
+        "how are my orders doing",
+    }
+
 
 def _prediction_priority(urgency: str) -> int:
     return {"high": 0, "medium": 1, "low": 2}.get((urgency or "").lower(), 3)
@@ -158,12 +335,12 @@ async def _fetch_inventory_items(search_term: str | None = None, limit: int = 8)
 def _format_inventory_reply(items: list[dict], search_term: str | None) -> str:
     if not items:
         if search_term:
-            return f"I could not find inventory for '{search_term}'. Try /inventory without filters to see all items."
-        return "No inventory data found yet. Add stock first, then ask again."
+            return f"I couldn\'t find any inventory for '{search_term}'. Try asking in a different way or ask for the full stock picture."
+        return "I don\'t have any stock records yet, so I can\'t show inventory right now."
 
-    title = "<b>Inventory Snapshot</b>"
+    title = "<b>Here\'s your inventory snapshot</b>"
     if search_term:
-        title = f"<b>Inventory for '{search_term}'</b>"
+        title = f"<b>Here\'s the inventory for '{search_term}'</b>"
 
     lines = [title, ""]
     for item in items:
@@ -174,7 +351,174 @@ def _format_inventory_reply(items: list[dict], search_term: str | None) -> str:
         )
 
     lines.append("")
-    lines.append("Ask naturally, for example: 'How much rice is left in inventory?'")
+    lines.append("You can ask me things like 'how much rice is left' or 'show me low stock items'.")
+    return "\n".join(lines)
+
+async def _handle_stock_addition(chat_id: int, text: str) -> None:
+    try:
+        # First try NLP extraction
+        result = {}
+        try:
+            result = await extract_intent_and_entities(text)
+        except Exception:
+            result = {"intent": "stock_arrival", "entities": {}}
+
+        intent = result.get("intent", "stock_arrival")
+        entities = result.get("entities", {}) or {}
+
+        # Best-effort local parse to fill missing fields (quantity, unit, product, expiry_date, supplier)
+        parsed = _parse_stock_text(text)
+        for k in ("product", "quantity", "unit", "expiry_date", "supplier"):
+            if parsed.get(k) and not entities.get(k):
+                entities[k] = parsed[k]
+
+        # Coerce quantity to numeric if it looks like '2kg' or '2 kg' or '2.5kg'
+        q = entities.get("quantity")
+        if isinstance(q, str):
+            m_q = re.search(r"(\d+(?:\.\d+)?)", q)
+            if m_q:
+                try:
+                    entities["quantity"] = float(m_q.group(1))
+                except Exception:
+                    entities["quantity"] = None
+            else:
+                entities["quantity"] = None
+
+        # Normalize common unit strings
+        u = entities.get("unit")
+        if isinstance(u, str):
+            uu = u.lower().strip().rstrip(".")
+            if uu in ("kgs", "kg"):
+                entities["unit"] = "kg"
+            elif uu in ("ltr", "l"):
+                entities["unit"] = "ltr"
+            else:
+                entities["unit"] = uu
+
+        if intent != "stock_arrival":
+            intent = "stock_arrival"
+
+        action_result = await handle_intent(intent, entities, str(chat_id))
+        inventory_item = action_result.get("inventory_item", {})
+        product_name = (
+            inventory_item.get("product_name")
+            or action_result.get("product")
+            or entities.get("product")
+            or parsed.get("product")
+            or "the item"
+        )
+        current_stock = inventory_item.get("current_stock")
+        unit = inventory_item.get("unit") or entities.get("unit") or parsed.get("unit") or "units"
+
+        qty_reported = action_result.get("quantity", entities.get("quantity", parsed.get("quantity", 0)))
+
+        if current_stock is not None:
+            reply = (
+                f"<b>Done</b>\n\n"
+                f"I\'ve added <b>{qty_reported}</b> {unit} of <b>{product_name}</b> to inventory.\n"
+                f"The stock for this item is now <b>{current_stock}</b> {unit}."
+            )
+        else:
+            reply = (
+                f"<b>Done</b>\n\n"
+                f"I\'ve added <b>{qty_reported}</b> {unit} of <b>{product_name}</b> to inventory."
+            )
+
+        await send_message(chat_id, reply)
+    except Exception as exc:
+        logger.warning("Failed to process inventory addition from Telegram: %s", exc)
+        await send_message(
+            chat_id,
+            "I tried to add that item, but I couldn\'t process it cleanly. Send the item name and quantity again, like 'add 20 bags of rice'.",
+        )
+
+async def _build_order_analytics_reply() -> str:
+    try:
+        from app.api.dashboard import _build_admin_stats
+
+        dashboard = await _build_admin_stats()
+        stats = dashboard.get("stats", {})
+        recent_orders = dashboard.get("recent_orders", [])
+        recent_bills = dashboard.get("recent_bills", [])
+    except Exception as exc:
+        logger.warning("Failed to build order analytics summary: %s", exc)
+        stats = {}
+        recent_orders = []
+        recent_bills = []
+
+    total_orders = int(stats.get("total_orders") or 0)
+    active_orders = int(stats.get("active_orders") or 0)
+    monthly_revenue = float(stats.get("monthly_revenue") or 0)
+    pending_payments = float(stats.get("pending_payments") or 0)
+    low_stock_count = int(stats.get("low_stock_count") or 0)
+    deliveries_in_transit = int(stats.get("deliveries_in_transit") or 0)
+    voice_calls_today = int(stats.get("voice_calls_today") or 0)
+
+    lines = ["<b>Here\'s your order picture</b>", ""]
+    lines.append(
+        f"You currently have <b>{total_orders}</b> total orders, with <b>{active_orders}</b> active right now."
+    )
+    lines.append(
+        f"This month\'s revenue is about <b>₹{monthly_revenue:,.2f}</b>, and pending payments are <b>₹{pending_payments:,.2f}</b>."
+    )
+    lines.append(
+        f"I also see <b>{deliveries_in_transit}</b> deliveries in transit and <b>{low_stock_count}</b> low-stock items that may need attention."
+    )
+    lines.append(f"Voice activity today is <b>{voice_calls_today}</b> commands processed.")
+
+    if recent_orders:
+        lines.append("")
+        lines.append("Recent orders I found:")
+        for order in recent_orders[:3]:
+            amount = float(order.get("total_amount") or 0)
+            lines.append(
+                f"- <b>{order.get('order_ref', 'Unknown')}</b>: {order.get('status', 'unknown')} • ₹{amount:,.2f}"
+            )
+
+    if recent_bills:
+        lines.append("")
+        lines.append("Recent bills look like this:")
+        for bill in recent_bills[:2]:
+            total = float(bill.get("total") or 0)
+            lines.append(
+                f"- <b>{bill.get('bill_ref', 'Unknown')}</b>: {bill.get('status', 'unknown')} • ₹{total:,.2f}"
+            )
+
+    lines.append("")
+    lines.append("If you want, I can also break this down by revenue, top products, or low-stock risk.")
+    return "\n".join(lines)
+
+
+async def _build_deliveries_reply(limit: int = 5) -> str:
+    """Fetch recent delivery updates and summary for Telegram."""
+    if not firestore_service.is_enabled or not firestore_service.db:
+        return "I don\'t have delivery data available right now."
+
+    docs = firestore_service.db.collection("delivery_updates").stream()
+    deliveries = []
+    async for doc in docs:
+        d = doc.to_dict() or {}
+        deliveries.append(d)
+
+    if not deliveries:
+        return "No delivery updates found."
+
+    in_transit = [d for d in deliveries if d.get("status") in ("in_transit", "dispatched")]
+    delivered = [d for d in deliveries if d.get("status") == "delivered"]
+
+    lines = ["<b>Delivery Summary</b>", ""]
+    lines.append(f"Active shipments: <b>{len(in_transit)}</b>")
+    lines.append(f"Delivered (recent): <b>{len(delivered)}</b>")
+    lines.append("")
+    lines.append("Recent updates:")
+    recent_sorted = sorted(deliveries, key=lambda x: x.get("updated_at") or "", reverse=True)[:limit]
+    for d in recent_sorted:
+        eta = d.get("eta") or "Unknown"
+        note = d.get("note") or ""
+        status = d.get("status") or "unknown"
+        order_id = d.get("order_id") or d.get("id")
+        lines.append(f"- <b>{order_id}</b>: {status} • ETA {eta} — {note}")
+
     return "\n".join(lines)
 
 
@@ -227,9 +571,9 @@ async def _build_prediction_alert_candidates(limit: int = 10) -> list[dict]:
 
 def _format_prediction_alerts(alerts: list[dict]) -> str:
     if not alerts:
-        return "<b>Prediction Alerts</b>\n\nNo immediate stockout risks right now."
+        return "<b>Good news</b>\n\nI don\'t see any immediate stockout risks right now."
 
-    lines = ["<b>Prediction Alerts</b>", ""]
+    lines = ["<b>Here\'s what I\'m watching closely</b>", ""]
     for alert in alerts:
         lines.append(
             f"- <b>{alert['product_name']}</b>: {alert['urgency_level']} risk, "
@@ -613,6 +957,18 @@ async def handle_telegram_webhook(update: dict) -> None:
     if not text:
         return
 
+    if _looks_like_order_analytics_query(text):
+        await send_message(chat_id, await _build_order_analytics_reply())
+        return
+
+    if _looks_like_delivery_query(text):
+        await send_message(chat_id, await _build_deliveries_reply())
+        return
+
+    if _looks_like_stock_add_query(text):
+        await _handle_stock_addition(int(chat_id), text)
+        return
+
     if text.startswith("/start"):
         phone = text.replace("/start", "").strip()
         if phone:
@@ -632,12 +988,12 @@ async def handle_telegram_webhook(update: dict) -> None:
             else:
                 await send_message(
                     chat_id,
-                    "We could not find an account for this number yet. Complete registration first, then send /start with your phone again.",
+                    "I couldn\'t find an account for that number yet. Finish registration first, then send your phone number again so I can link it.",
                 )
         else:
             await send_message(
                 chat_id,
-                "Welcome to Stash! Send /start {your phone number} to link your account.",
+                "Welcome to Stash. Send me your phone number so I can link this chat to your account.",
             )
 
     elif _looks_like_inventory_query(text):
@@ -652,22 +1008,31 @@ async def handle_telegram_webhook(update: dict) -> None:
     elif text.startswith("/help"):
         await send_message(
             chat_id,
-            "<b>Stash Bot Commands</b>\n\n"
-            "/start {phone} — Link your account\n"
-            "/inventory {product?} — Ask inventory levels\n"
-            "/alerts — Show model prediction alerts\n"
-            "/help — Show this menu",
+            "I can check your orders, revenue, inventory, deliveries, and low-stock alerts. Try asking me naturally, like 'tell me order analytics' or 'how much rice is left?'.",
+            "I can check your orders, revenue, inventory, deliveries, low-stock alerts, and I can also add stock when you send me an update in plain language.",
         )
     else:
         await send_message(
             chat_id,
-            "I can help with inventory and prediction alerts. Try: /inventory, /alerts, or /help.",
+            "I can check orders, inventory, deliveries, revenue, and alerts. Ask me naturally, and I\'ll pull the relevant update for you.",
         )
 
 
 async def register_telegram_webhook() -> dict:
     """Register the Telegram webhook on app startup"""
-    webhook_url = f"{settings.BACKEND_URL}/api/webhook/telegram"
+    configured_url = (settings.TELEGRAM_WEBHOOK_URL or settings.BACKEND_URL or "").rstrip("/")
+    parsed = urlparse(configured_url)
+    if parsed.scheme and parsed.netloc and parsed.path not in {"", "/"}:
+        webhook_url = configured_url
+    elif configured_url:
+        webhook_url = f"{configured_url}/api/webhook/telegram"
+    else:
+        webhook_url = "/api/webhook/telegram"
+    if webhook_url.startswith("http://localhost") or webhook_url.startswith("https://localhost") or webhook_url.startswith("http://127.0.0.1"):
+        logger.warning(
+            "Telegram webhook is configured with a local URL (%s). Telegram cannot reach localhost, so incoming replies will not work until you expose a public HTTPS URL.",
+            webhook_url,
+        )
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{TELEGRAM_API}/setWebhook",
