@@ -1,5 +1,6 @@
 """Stash Backend — FastAPI Application Entry Point"""
 from contextlib import asynccontextmanager
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -40,7 +41,23 @@ async def lifespan(app: FastAPI):
 
     # Register Telegram webhook (non-blocking)
     if settings.TELEGRAM_BOT_TOKEN:
+        # If developer wants to use ngrok locally, start a tunnel and set the webhook URL
         try:
+            use_ngrok = os.environ.get("USE_NGROK", "True").lower() == "true"
+            if use_ngrok and not (settings.TELEGRAM_WEBHOOK_URL or settings.BACKEND_URL):
+                try:
+                    from pyngrok import ngrok
+
+                    # Default backend port where uvicorn will run
+                    ngrok_port = int(os.environ.get("PORT", 8000))
+                    tunnel = ngrok.connect(ngrok_port)
+                    public_url = tunnel.public_url
+                    # Prefer explicit webhook path; register_telegram_webhook will append path if needed
+                    settings.TELEGRAM_WEBHOOK_URL = public_url
+                    print(f"Ngrok tunnel started at {public_url}; will register Telegram webhook against this URL")
+                except Exception as _e:
+                    print(f"Ngrok auto-start skipped: {_e}")
+
             from app.services.telegram_svc import register_telegram_webhook
 
             result = await register_telegram_webhook()

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_WEBHOOK_SECRET: str = ""
     TELEGRAM_CHAT_ID: str = ""
+    TELEGRAM_WEBHOOK_URL: str = ""
 
     # Auth
     SECRET_KEY: str = "stash-secret-key-change-in-production"
