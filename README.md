@@ -37,6 +37,10 @@
 
 ---
 
+![Stash Mobile](assets/readme5.jpeg)
+
+---
+
 ![Stash Mobile](assets/readme4.png)
 
 ---
@@ -70,7 +74,7 @@ uv run uvicorn app.main:app --reload
 *Note: Make sure you have Python 3.12+ and `uv` installed.*
 
 Telegram replies require `TELEGRAM_BOT_TOKEN` and a public `TELEGRAM_WEBHOOK_URL` or `BACKEND_URL` that Telegram can reach. For local development, `http://localhost:8000` is not enough because Telegram cannot call back into your machine.
-Telegram registration alerts require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to be set in your environment. The chat ID must belong to a chat that has already started the bot.
+Telegram registration alerts require `TELEGRAM_BOT_TOKEN` to be set in your environment. The chat ID must belong to a chat that has already started the bot.
 
 #### 3. Set up the Frontend
 Navigate to the `frontend` directory and install the Node dependencies.
